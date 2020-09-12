@@ -155,11 +155,11 @@ def load_speech_segments(segments_path, step=0.01):
     return segments
 
 
-def load_unscored_segments(uem_path, step=0.01):
-    """Load nonscoring regions for recording from UEM file.
+def load_scored_segments(uem_path, step=0.01):
+    """Load scoring regions for recording from UEM file.
 
-    Parmeters
-    ---------
+    Parameters
+    ----------
     uem_path : Path
         Path to UEM file.
 
@@ -182,9 +182,12 @@ def load_unscored_segments(uem_path, step=0.01):
             offsets[rec_id].append(float(offset))
     segments = {}
     for rec_id in onsets:
+        segs = zip(onsets[rec_id], offsets[rec_id])
+        segs = sorted(segs)
+        onsets_, offsets_ = zip(*segs)
         segments[rec_id] = Segmentation(
-            _seconds_to_frames(onsets[rec_id], step),
-            _seconds_to_frames(offsets[rec_id], step))
+            _seconds_to_frames(onsets_, step),
+            _seconds_to_frames(offsets_, step))
     return segments
 
 
@@ -215,13 +218,11 @@ def main():
 
     args.targets_dir.mkdir(parents=True, exist_ok=True)
     speech_segments = load_speech_segments(args.segments)
-    unscored_segments = {}
     if args.uem is not None:
-        unscored_segments = load_unscored_segments(args.uem)
+        scored_segments = load_scored_segments(args.uem, args.frame_step)
     targets_scp_path = Path(args.targets_dir, 'targets.scp')
     targets_ark_path = Path(args.targets_dir, 'targets.ark')
-    ark_scp_output = (f'ark:| copy-feats --compress=true '
-                      f'ark:- ark,scp:{targets_ark_path},{targets_scp_path}')
+    ark_scp_output = ('ark:| copy-feats --compress=true ark:- ark,scp:{0},{1}'.format(targets_ark_path,targets_scp_path))
     with open(args.utt2num_frames, 'r') as f:
         with kaldi_io.open_or_fd(ark_scp_output,'wb') as g:
             for line in f:
@@ -234,10 +235,12 @@ def main():
                     speech_onsets, speech_offsets  = speech_segments[rec_id]
                     for onset, offset in zip(speech_onsets, speech_offsets):
                         targets[onset:offset+1] = 0
-                if rec_id in unscored_segments:
-                    unscored_onsets, unscored_offsets = unscored_segments[rec_id]
-                    for onset, offset in zip(unscored_onsets, unscored_offsets):
-                        targets[onset:offset+1] = 2
+                if rec_id in scored_segments:
+                    scored_onsets, scored_offsets = scored_segments[rec_id]
+                    is_scored = np.zeros_like(targets, dtype=np.bool)
+                    for onset, offset in zip(scored_onsets, scored_offsets):
+                        is_scored[onset:offset+1] = True
+                    targets[~is_scored] = 2
 
                 # Convert targets to one-hot.
                 targets = np.eye(3)[targets]
