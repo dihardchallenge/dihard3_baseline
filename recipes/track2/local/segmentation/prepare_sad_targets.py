@@ -24,9 +24,10 @@ distributions over the following classes:
   are unclear about the label)
 
 By default, probability mass is never assigned to the garbage class. If
-non-scoring regions are known and contained in a UEM file using the same
+scoring regions are known and contained in a UEM file using the same
 recording ids as in ``segments`` and ``utt2num_frames``, the script can be
-directed to assign the corresponding frames to the garbage model:
+directed to assign frames corresponding to NON-SCORING regions to the
+garbage model:
 
     python3 prepare_sad_targets.py --uem all.uem segments utt2num_frames targets_dir
 
@@ -170,7 +171,7 @@ def load_scored_segments(uem_path, step=0.01):
     Returns
     -------
     segments : dict
-        Mapping from recording ids to nonscoring regions, stored as
+        Mapping from recording ids to scoring regions, stored as
         ``Segmentation`` instances.
     """
     onsets = defaultdict(list)
