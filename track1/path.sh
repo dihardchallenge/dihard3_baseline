@@ -1,5 +1,4 @@
-export KALDI_ROOT="/state/partition1/softwares/Kaldi_March2020/kaldi"
-#export KALDI_ROOT="/home/student1/softwares/kaldi_diarization"
+export KALDI_ROOT="/path/to/kaldi_directory/kaldi"
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH:$KALDI_ROOT/src/nnet3bin
 [ ! -f $KALDI_ROOT/tools/config/common_path.sh ] && echo >&2 "The standard file $KALDI_ROOT/tools/config/common_path.sh is not present -> Exit!" && exit 1
