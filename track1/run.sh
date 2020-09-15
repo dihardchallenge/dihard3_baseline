@@ -19,8 +19,8 @@ DIHARD_EVAL_DIR=/scratch/nryant/dihard2/deliveries/LDC2019E32_Second_DIHARD_Chal
 #### Check deps satisfied ###########
 #####################################
 THIS_DIR=`realpath $(dirname "$0")`
-TOOLS_DIR=$THIS_DIR/../../tools
-SCRIPTS_DIR=$THIS_DIR/../../scripts
+# TOOLS_DIR=$THIS_DIR/../../tools
+# SCRIPTS_DIR=$THIS_DIR/../../scripts
 # [ -f $TOOLS_DIR/env.sh ] && . $TOOLS_DIR/env.sh
 # if [ -z	$KALDI_DIR ]; then
 #     echo "KALDI_DIR not defined. Please run tools/install_kaldi.sh"
