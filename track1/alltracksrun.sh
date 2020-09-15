@@ -130,7 +130,7 @@ mkdir -p $OUT_DIR
 if [ $stage -le 4 ]; then
 	echo "AHC + VBx"
 	for threshold in -0.8 -0.7 -0.6 -0.5 -0.4 -0.3 -0.2 -0.1 -0.05 0.0 0.05 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8; do
-		./run_recipe.sh --USE_INT 0 --USE_GMM 1 --PLDA_DIR ./plda --TMP_DIR $DEV_XVEC_DIR --GT_DIR $dihard_dev --OUT_DIR ${OUT_DIR}/thr_${threshold} \
+		./run_recipe.sh --USE_INT 0 --USE_GMM 1 --PLDA_DIR $plda_path --TMP_DIR $DEV_XVEC_DIR --GT_DIR $dihard_dev --OUT_DIR ${OUT_DIR}/thr_${threshold} \
 						--SCORE_DIR ./dscore-master/ --thr $threshold
 	done;
 fi
