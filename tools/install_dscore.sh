@@ -3,44 +3,20 @@
 
 set -e
 
-PIP=pip
-PYTHON=python
-SCRIPT_DIR=`realpath $(dirname "$0")`
-
-# Install python deps.
-echo "Installing required Python packages."
-if ! $PIP install intervaltree numpy scipy tabulate; then
-    echo ""
-    echo "Some Python packages failed to install. Please check pip error output (above)"
-    echo "and resolve."
-    echo ""
-    exit 1
-fi
 
 # Clone repo.
 echo "Installing dscore."
 DSCORE_GIT=https://github.com/nryant/dscore.git
-DSCORE_DIR=`realpath $SCRIPT_DIR/dscore`
+SCRIPT_DIR=$(realpath $(dirname "$0"))
+DSCORE_DIR=$SCRIPT_DIR/dscore
+DSCORE_REVISION=824f126
 if [ ! -d $DSCORE_DIR ]; then
-    git clone $DSCORE_GIT
+    git clone $DSCORE_GIT $DSCORE_DIR
     cd $DSCORE_DIR
-    git checkout 824f126
+    git checkout $DSCORE_REVISION
     cd ..
 else
     echo "$DSCORE_DIR already exists!"
-fi
-
-# Add config into env.sh
-unset DSCORE_DIR
-if [ -s ./env.sh ]; then
-    source env.sh
-fi
-if  [ ! -z "${DSCORE_DIR}" ]; then
-    echo "DSCORE_DIR variable is already in env.sh"
-else
-    echo "Modifying env.sh."
-    echo "export DSCORE_DIR=$SCRIPT_DIR/dscore" >> env.sh
-    echo "export PATH=\${PATH}:\${DSCORE_DIR}"  >> env.sh
 fi
 
 
