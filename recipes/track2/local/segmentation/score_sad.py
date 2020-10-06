@@ -373,9 +373,6 @@ def main():
         '-u,--uem', metavar='FILE', default=None, type=Path, dest='uem_path',
         help='un-partitioned evaluation map file (default: %(default)s)')
     parser.add_argument(
-        '--recordings-table', metavar='FILE', default=None, type=Path,
-        help='path to recordings table (default: %(default)s)')
-    parser.add_argument(
         '--collar', nargs=None, default=0.0, type=float, metavar='DUR',
         help='collar size in seconds (default: %(default)s)')
     parser.add_argument(
