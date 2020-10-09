@@ -3,3 +3,4 @@ scipy >= 0.17.0
 intervaltree >= 3.0.0
 tabulate >= 0.5.0
 kaldi_io
+torch >= 1.6.0
