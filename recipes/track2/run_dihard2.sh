@@ -79,7 +79,7 @@ if [ $stage -le 1 ]; then
     echo "$0: Training SAD..."
     local/train_sad.sh \
 	--nj $nj --stage $sad_train_stage \
-	data/dihard2_dev exp/sad_tdnn_stats
+	data/dihard2_dev exp/dihard2_sad_tdnn_stats
 fi
 
 
@@ -91,7 +91,7 @@ if [ $stage -le 2 ]; then
     for dset in dev eval; do
 	local/segmentation/detect_speech_activity.sh \
 	    --nj $nj --stage $sad_decode_stage \
-	    data/dihard2_${dset} exp/sad_tdnn_stats \
+	    data/dihard2_${dset} exp/dihard2_sad_tdnn_stats \
 	    mfcc exp/sad_tdnn_stats_decode_${dset} \
        	    data/dihard2_${dset}_seg
     done
