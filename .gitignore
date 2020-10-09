@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Filesystem crud.
+*~
+\#*
+
+
+# Kaldi recipes.
+data/
+exp/
