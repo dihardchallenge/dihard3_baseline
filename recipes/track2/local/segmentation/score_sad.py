@@ -287,13 +287,13 @@ def score_recordings(recordings, metrics, domains=None, n_jobs=1):
     domains = {} if domains is None else domains
     domains['OVERALL'] = {recording.uri for recording in recordings}
 
-    # Accumulate raw stats for each recording.
+    # Accumulate raw stats for seach recording.
     results = {}  # recording URI ==> metrics for that recording.
-    with mp.get_context('spawn').Pool(n_jobs) as pool:
+    with mp.Pool(n_jobs) as pool:
         f = partial(_score_one_recording, metrics=metrics)
         for recording, result in zip(recordings, pool.imap(f, recordings)):
             results[recording.uri] = result
-
+        
     # Aggregate by domain.
     per_domain_metrics = {}  # domain name ==> metrics for that domain.
     for dname in domains:
