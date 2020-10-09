@@ -1,4 +1,7 @@
 export TOOLS_DIR=$PWD/../../tools
+# dscore.
+export PATH=$TOOLS_DIR/dscore:$PATH
+# Kaldi.
 export KALDI_ROOT=$TOOLS_DIR/kaldi/
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
