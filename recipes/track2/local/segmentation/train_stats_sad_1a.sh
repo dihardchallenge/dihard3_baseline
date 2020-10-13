@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
-
 # Copyright 2017   Nagendra Kumar Goel
 #           2018   Vimal Manohar
 # Apache 2.0
 
-# This is a script to train a TDNN for speech activity detection (SAD) 
+# This is a script to train a TDNN for speech activity detection (SAD)
 # using statistics pooling for long-context information.
+#
+# Based on:
+#
+#     egs/chime6/s5_track2/local/segmentation/tuning/train_stats_sad_1a.sh
 
+
+
+###############################################################################
+# Global config
+###############################################################################
 stage=0
 train_stage=-10
 get_egs_stage=-10
-egs_opts=
+nj=40
 
+
+###############################################################################
+# Context options
+###############################################################################
 chunk_width=20
 
 # The context is chosen to be around 1 second long. The context at test time
@@ -19,30 +31,45 @@ chunk_width=20
 extra_left_context=79
 extra_right_context=21
 
+
+###############################################################################
+# NNet config
+###############################################################################
 relu_dim=256
 
-# training options
+
+###############################################################################
+# NNet training
+###############################################################################
 num_epochs=1
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=4
 num_jobs_final=6
-remove_egs=true
 max_param_change=0.2  # Small max-param change for small network
 
-egs_dir=
-nj=40
+# If following is true, remove intermediate models, configs/, egs/, and other
+# files/directories created by training that are not needed to use the model.
+cleanup=true
 
-dir=
 
-data_dir=
-targets_dir=
+###############################################################################
+# Directories
+###############################################################################
+data_dir=     # Data directory containing input features.
+targets_dir=  # Directory containing labels for frames.
+egs_dir=      # Working directory for examples during training.
+dir=          # Output directory for trained model.
 
+
+###############################################################################
+# Path and other checks
+###############################################################################
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
-set -o pipefail
+set -e -o pipefail
 set -u
 
 if [ -z "$dir" ]; then
@@ -57,6 +84,11 @@ where "nvcc" is installed.
 EOF
 fi
 
+
+
+###############################################################################
+# Generate model config.
+###############################################################################
 mkdir -p $dir
 
 samples_per_iter=`perl -e "print int(400000 / $chunk_width)"`
@@ -66,11 +98,11 @@ echo $cmvn_opts > $dir/cmvn_opts
 
 if [ $stage -le 0 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-  
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=`feat-to-dim scp:$data_dir/feats.scp -` name=input
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2) affine-transform-file=$dir/configs/lda.mat 
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2) affine-transform-file=$dir/configs/lda.mat
 
   relu-renorm-layer name=tdnn1 input=lda dim=$relu_dim add-log-stddev=true
   relu-renorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=$relu_dim add-log-stddev=true
@@ -90,29 +122,38 @@ num_targets=3
 EOF
 fi
 
+
+
+###############################################################################
+# Train network.
+###############################################################################
 if [ $stage -le 1 ]; then
-    # Set number of recordings to use for validation. Ideally, we'd set this to 0 as this data
-    # isn't used by the optimization itself (e.g., for early stopping, adjusting learning rate,
-    # etc), but 1 is the lowest we could do.
+    # Set number of recordings to use for validation. Ideally, we'd set this to
+    # 0 as this data isn't used by the optimization itself (e.g., for early
+    # stopping, adjusting learning rate, etc), but 1 is the lowest we could do.
     #
-    # NOTE: Be careful adusting this parameter or attempting to make inferences about generalization
-    # from results computing on this subset. Because DIHARD recording are very much not homogenous,
-    # this number needs to be relatively high to give an accurate estimate of generalization to the
-    # EVAL set.
-    num_utts=`cat $data_dir/utt2spk | wc -l`
-    num_utts_subset=40
-    #num_utts_subset=1
+    # NOTE: Be careful adusting this parameter or attempting to make inferences
+    # about generalization from results computed on this subset. Because DIHARD
+    # recording are very much not homogenous, this number needs to be relatively
+    # high to give an accurate estimate of generalization to the EVAL set.
+    num_utts_subset=1
 
     # Train. Apologies for so many command-line flags.
     steps/nnet3/train_raw_rnn.py \
 	--stage=$train_stage \
-	--feat.cmvn-opts="$cmvn_opts" \
+	--cmd="$decode_cmd" --nj $nj \
+	--use-gpu=true \
+	--dir=$dir \
+	--feat-dir=$data_dir --feat.cmvn-opts="$cmvn_opts" \
+	--use-dense-targets=true \
+	--targets-scp="$targets_dir/targets.scp" \
 	--egs.chunk-width=$chunk_width \
 	--egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
 	--egs.chunk-left-context=$extra_left_context \
 	--egs.chunk-right-context=$extra_right_context \
 	--egs.chunk-left-context-initial=0 \
 	--egs.chunk-right-context-final=0 \
+	--egs.opts="--frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
 	--trainer.num-epochs=$num_epochs \
 	--trainer.samples-per-iter=20000 \
 	--trainer.optimization.do-final-combination=false \
@@ -125,28 +166,44 @@ if [ $stage -le 1 ]; then
 	--trainer.deriv-truncate-margin=10 \
 	--trainer.max-param-change=$max_param_change \
 	--trainer.compute-per-dim-accuracy=true \
-	--cmd="$decode_cmd" --nj $nj \
 	--cleanup=true \
-	--cleanup.remove-egs=$remove_egs \
-	--cleanup.preserve-model-interval=10 \
-	--use-gpu=true \
-	--use-dense-targets=true \
-	--feat-dir=$data_dir \
-	--targets-scp="$targets_dir/targets.scp" \
-	--egs.opts="--frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
-	--dir=$dir || exit 1
+	--cleanup.remove-egs=true \
+	--cleanup.preserve-model-interval=10
 fi
 
 
-if [ $stage -le 2 ]; then
-  # Use a subset to compute prior over the output targets
-  #$train_cmd $dir/log/get_priors.log \
-  #  matrix-sum-rows "scp:utils/subset_scp.pl --quiet 1000 $targets_dir/targets.scp |" \
-  #  ark:- \| vector-sum --binary=false ark:- $dir/post_output.vec || exit 1
-  #
-  # Better results with uniform priors?  
-  echo " [ 1 1 1 ]" > $dir/post_output.vec || exit 1
 
+###############################################################################
+# Estimate class posteriors for use in generating pseudo likelihoods
+# at decoding time
+###############################################################################
+if [ $stage -le 2 ]; then
+  # Set to actual distribution of speech/non-speech in DEV set:
+  # - speech: 80%
+  # - nonspeech: 20%  
+  echo " [ 1 4 0.0001 ]" > $dir/post_output.vec
   echo 3 > $dir/frame_subsampling_factor
 fi
 
+
+
+###############################################################################
+# Clean up training directory
+###############################################################################
+if [ $stage -le 3 $cleanup = "true" ]; then
+    # Retains following:
+    # - accuraccy.report
+    # - cmvn_opts
+    # - final.raw
+    # - frame_subsampling_factor
+    # - lda.mat
+    # - lda_stats
+    # - log/
+    # - post_output.vec
+    # - srand
+    cp $dir/final.raw $dir/final.raw.keep
+    rm $dir/*.raw
+    mv $dir/final.raw.keep $dir/final.raw
+    rm $dir/cache*
+    rm -fr $dir/{configs,egs}
+fi

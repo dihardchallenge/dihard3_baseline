@@ -88,7 +88,7 @@ fi
 # Prepare SAD targets for recordings
 ###############################################################################
 mkdir -p $dir
-targets_dir=$dir/${whole_data_id}_combined_targets
+targets_dir=exp/${whole_data_id}_sad_targets
 if [ $stage -le 2 ]; then
   local/segmentation/prepare_sad_targets.py \
       --frame-step 0.010 \
@@ -104,10 +104,10 @@ if [ $stage -le 3 ]; then
     # Train a STATS-pooling network for SAD
     local/segmentation/train_stats_sad_1a.sh \
 	--stage $nstage --train-stage $train_stage \
-	--num-epochs 20 \
+	--num-epochs 40 \
 	--targets-dir ${targets_dir} \
 	--data-dir ${whole_data_dir} \
-	--dir $dir || exit 1
+	--dir $dir
 fi
 
 exit 0;
