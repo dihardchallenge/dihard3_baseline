@@ -190,7 +190,7 @@ fi
 ###############################################################################
 # Clean up training directory
 ###############################################################################
-if [ $stage -le 3 $cleanup = "true" ]; then
+if [ $stage -le 3 -a $cleanup = "true" ]; then
     # Retains following:
     # - accuraccy.report
     # - cmvn_opts
