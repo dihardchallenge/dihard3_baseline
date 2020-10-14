@@ -107,7 +107,7 @@ if [ $stage -le 3  -a  $eval_sad = "true" ]; then
 	--n-jobs $nj --collar 0.0\
 	data/dihard2_dev/segments \
 	data/dihard2_dev_seg/segments \
-	local/dihard2_dev_recordings.tsv
+	local/dihard2_dev_recordings.tbl
     echo ""
     echo ""
 
@@ -116,6 +116,6 @@ if [ $stage -le 3  -a  $eval_sad = "true" ]; then
         --n-jobs $nj --collar 0.0\
         data/dihard2_eval/segments \
         data/dihard2_eval_seg/segments \
-        local/dihard2_eval_recordings.tsv
+        local/dihard2_eval_recordings.tbl
 
 fi
