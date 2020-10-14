@@ -22,7 +22,7 @@ diarization_stage=0
 # - pyannote.core
 # - pyannote.metrics
 # - pandas
-eval_sad=true
+eval_sad=false
 
 
 #####################################
