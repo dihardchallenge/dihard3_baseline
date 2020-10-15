@@ -104,7 +104,7 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
     extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
-    compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- \| \
+    compute-mfcc-feats $vtln_opts --verbose=2 --allow-downsample=true --config=$mfcc_config ark:- ark:- \| \
     copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
      || exit 1;

@@ -5,13 +5,13 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/vad
 
 tracknum=-1
-TRACK_DIR=recipes/track1
 DIHARD_DEV_DIR=default
 DSCORE_DIR=dscore-master
 nnet_dir=exp/xvector_nnet_1a
 plda_path=default
 njobs=40
 stage=0
+
 . parse_options.sh || exit 1;
 
 if [ $# != 0 -o "$plda_path" = "default" -o "$tracknum" = "-1" ]; then
@@ -24,20 +24,19 @@ if [ $# != 0 -o "$plda_path" = "default" -o "$tracknum" = "-1" ]; then
   exit 1;
 fi
 
-TRACK_DIR=recipes/track$tracknum
-echo "track: $TRACK_DIR"
-
 if [[ !( "$tracknum" == "1" || "$tracknum" == "2" || "$tracknum" == "2_den" ||
          "$tracknum" == "3" || "$tracknum" == "4" || "$tracknum" == "4_den") ]]; then
     echo "ERROR: Unrecognized track."
     exit 1
 fi
 
+TRACK_DIR=recipes/track$tracknum
+echo "Track: $TRACK_DIR"
 
 echo "Running baseline for Track ${tracknum}..."
 track=track$tracknum
-dihard_dev=dihard_dev_2019_${track}
-dihard_eval=dihard_eval_2019_${track}
+dihard_dev=dihard_dev_2020_${track}
+dihard_eval=dihard_eval_2020_${track}
 
 # Determine max num jobs for each of DEV/EVAL.
 dev_nfiles=`wc -l < data/${dihard_dev}/wav.scp`
@@ -103,16 +102,18 @@ if [ $stage -le 2 ]; then
 	$cmn_dir $DEV_XVEC_DIR
     echo "X-vector extraction finished for DEV. See $DEV_XVEC_DIR/log for logs."
 fi
+
 if [ $stage -eq -7 ]; then
     echo "Extracting x-vectors for EVAL..."
     cmn_dir=data/${dihard_eval}_cmn
     diarization/nnet3/xvector/extract_xvectors.sh \
 	--cmd "$train_cmd --mem 5G" --nj $eval_njobs \
-	--window 1.5 --period 0.25 --apply-cmn false \
 	--min-segment 0.25 $nnet_dir \
 	$cmn_dir $EVAL_XVEC_DIR
     echo "X-vector extraction finished for EVAL. See $EVAL_XVEC_DIR/log for logs."
 fi
+
+#./train_plda.sh --tracknum 1
 
 # Perform PLDA scoring
 PLDA_DIR=$DEV_XVEC_DIR
@@ -142,7 +143,7 @@ if [ $stage -le 4 ]; then
     echo "Tuning clustering threshold using DEV..."
     best_der=100
     best_threshold=0
-    for threshold in -1.5 -1.4 -1.3 -1.2 -1.1 -1.0 -0.9 -0.8 -0.7 -0.6 -0.5; do
+    for threshold in -1.5 -1.4 -1.3 -1.2 -1.1 -1.0 -0.9 -0.8 -0.7 -0.6 -0.5 -0.4 -0.3 -0.2 -0.1 0.0; do
 	echo "Clustering with threshold $threshold..."
 	cluster_dir=${DEV_XVEC_DIR}/plda_scores_t${threshold}
 	diarization/cluster.sh \
@@ -189,28 +190,48 @@ if [ $stage -eq -7 ]; then
 fi
 
 # Score Dev
-DEV_RTTM_DIR=${TRACK_DIR}/rttm_dev
-EVAL_RTTM_DIR=${TRACK_DIR}/rttm_eval
+#DEV_RTTM_DIR=${TRACK_DIR}/rttm_dev_${band}
+DEV_RTTM_DIR=${DEV_SCORE_DIR}/filewise_rttms
+EVAL_RTTM_DIR=${EVAL_SCORE_DIR}/filewise_rttms
 if [ $stage -le 6 ]; then
     echo "Extracting RTTM files..."
     local/split_rttm.py \
         ${DEV_SCORE_DIR}/rttm ${DEV_RTTM_DIR}
-    EVAL_RTTM_DIR=$THIS_DIR/rttm_eval
     #local/split_rttm.py \
     #    ${EVAL_SCORE_DIR}/rttm ${EVAL_RTTM_DIR}
 
     # Score system outputs for DEV set against reference.
     echo "Scoring DEV set RTTM..."
     $PYTHON $DSCORE_DIR/score.py \
-        -u $DIHARD_DEV_DIR/data/single_channel/uem/all.uem \
-        -r $DIHARD_DEV_DIR/data/single_channel/rttm/*.rttm \
+        -u $DIHARD_DEV_DIR/data/uem_scoring/full/all.uem \
+        -r $DIHARD_DEV_DIR/data/rttm/*.rttm \
         -s $DEV_RTTM_DIR/*.rttm \
         > ${TRACK_DIR}/metrics_dev.stdout 2> ${TRACK_DIR}/metrics_dev.stderr
 fi
 
 # VBHMM Resegmentation
 if [ $stage -le 7 ]; then
-    ./run_vb_dihard3.sh --data_dir data/$dihard_dev --init_rttm_path ${DEV_SCORE_DIR}
+    echo "Performing VB Resegmentation..."
+    isvb=_vb
+
+    init_rttm_path=${DEV_RTTM_DIR}
+    cat $init_rttm_path/*.rttm > $init_rttm_path/rttm
+
+    DEV_RTTM_DIR=${DEV_RTTM_DIR}${isvb}
+    #EVAL_RTTM_DIR=${TRACK_DIR}/rttm_eval
+    ./run_vb_dihard3.sh --stage 0 --nnet_dir $nnet_dir --init_rttm_path $init_rttm_path --output_dir_overall $DEV_RTTM_DIR
+
+    # Score system outputs for DEV set against reference.
+    echo "Scoring DEV set RTTM..."
+    $PYTHON $DSCORE_DIR/score.py \
+        -u $DIHARD_DEV_DIR/data/uem_scoring/full/all.uem \
+        -r $DIHARD_DEV_DIR/data/rttm/*.rttm \
+        -s $DEV_RTTM_DIR/*.rttm \
+        > ${TRACK_DIR}/metrics_dev${isvb}.stdout 2> ${TRACK_DIR}/metrics_dev${isvb}.stderr
+
+    grep OVERALL ${TRACK_DIR}/metrics_dev${isvb}.stdout
+    echo "Filewise DER in ${TRACK_DIR}/metrics_dev${isvb}.stdout"
+
 fi
 
 echo "Run finished successfully."

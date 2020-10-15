@@ -1,195 +1,320 @@
-#!/usr/bin/env python3
-"""TODO."""
-from __future__ import print_function
-from __future__ import unicode_literals
+#!/usr/bin/env python
+"""Poppulate Kaldi data directory for diarization.
+
+The resulting data directory contains the following files:
+
+- wav.scp  --  Kaldi WAV script file with one entry per FLAC file located
+  under ``data/flac/``
+- segments  --  Kaldi segments file containing  reference speech segmentation;
+  generated from the contents of the ``.lab`` files under ``data/sad/`` with
+  one utterance per reference speech segment
+- utt2spk  --  Kaldi ``utt2spk`` file mapping utterances to its "speaker";
+  here, each recording is considered a unique speaker
+- reco2num_spk  --  mapping from recordings to the oracle number of speakers
+  present
+
+Within these files, recording ids, utterance ids, and speaker ids are defined
+as follows:
+
+- recording id  --  set to the basename of the corresponding FLAC file minus
+  the extension; e.g., the recording id of ``data/flac/DH_DEV_0001.flac`` is
+  ``DH_DEV_0001``
+- speaker id  --  the speaker id of each utterance/segment is set to the
+  recording id of the recording the utterance/segment is from; that is, every
+  segment from the recording ``DH_DEV_0001`` is assigned the speaker id
+  ``DH_DEV_0001``
+- utterance id  --  utterance ids are name according to the convention
+
+      <recording-id>_<index>
+
+  where  ``recording-id`` is the recording id of the segment's parent recording
+  and ``index`` is the position of the segment within that recording; e.g.,
+  the following are valid utterance ids:
+
+  - DH_DEV_0001_0001
+  - DH_DEV_0001_0002
+  - ...
+"""
 import argparse
-from collections import defaultdict, namedtuple
-import glob
+from dataclasses import dataclass
 import itertools
-import os
+from pathlib import Path
 import sys
 
 
-Segment = namedtuple('Segment', ['id', 'onset', 'offset', 'label'])
-Turn = namedtuple(
-    'Turn', ['type', 'fid', 'channel', 'onset', 'dur', 'ortho', 'speaker_type',
-             'speaker_id', 'score', 'slt'])
+@dataclass
+class Segment:
+    """Speech segment, which may contain speech from multiple speakers.
 
-def read_label_file(fn):
-    """Load segments from label file ``fn``."""
-    utt = get_utt(fn)
-    with open(fn, 'rb') as f:
+    Parameters
+    ----------
+    utterance_id : str
+        Unique identifier for segment.
+
+    onset : float
+        Onset in seconds of segment.
+
+    offset : float
+        Offset in seconds of segment.
+
+    label : str
+        Segment label; e.g., "speech".
+    """
+    utterance_id: str
+    onset: float
+    offset: float
+    label: str
+
+    @property
+    def duration(self):
+        """Duration of segment in seconds."""
+        return self.offset - self.onset
+
+
+@dataclass
+class RTTMTurn:
+    """Speaker turn from RTTM file.
+
+    Parameters
+    ----------
+    recording_id : str
+        Recording turn is from.
+
+    speaker_id : str
+        Speaker of turn.
+
+    onset : float
+        Onset of turn in seconds.
+
+    offset : float
+        Offset of turn in seconds.
+
+    rttm_line : str
+        Original line of turn in source RTTM file.
+    """
+    recording_id: str
+    speaker_id: str
+    onset: float
+    offset: float
+    rttm_line: str
+
+
+@dataclass
+class Recording:
+    """
+    Parameters
+    ----------
+    recording_id : str
+        Recording id.
+
+    lab_path : Path
+        Path to label file containing speech segmentation.
+
+    audio_path : Path
+        Path to audio file.
+
+    rttm_path : Path, optional
+        Path to RTTM file containing diarization.
+        (Default: None)
+    """
+    recording_id: str
+    lab_path: Path
+    audio_path: Path
+    rttm_path: Path=None
+
+    def __post_init__(self):
+        self._segments = None
+        self._turns = None
+
+    @property
+    def segments(self):
+        """Speech segments."""
+        if self._segments is None:
+            self._segments = read_label_file(self.lab_path)
+        return self._segments
+
+    @property
+    def turns(self):
+        """Speaker turns in recording's diarization."""
+        if self._turns is None:
+            if self.rttm_path is None or not self.rttm_path.exists():
+                raise AttributeError(
+                    f'diarization not available for recording '
+                    f'"{self.recording_id}"')
+            self._turns = read_rttm_file(self.rttm_path)
+        return self._turns
+
+    @property
+    def speakers(self):
+        """Speakers present on recording."""
+        return set(turn.speaker_id for turn in self.turns)
+
+    @property
+    def num_speakers(self):
+        """Number of speakers present on recording."""
+        return len(self.speakers)
+
+
+    @staticmethod
+    def load_recordings(sad_dir, flac_dir, rttm_dir=None):
+        """Load recordings from FLAC, SAD, and RTTM files.
+
+        Parameters
+        ----------
+        sad_dir : str
+            Path to directory containing SAD label files.
+
+        audio_dir : str
+            Path to directory containing FLAC files.
+
+        rttm_dir : str, optional
+            Path to directory containing RTTM files.
+            (Default: None)
+
+        Returns
+        -------
+        list of Recording
+            Recordings.
+        """
+        flac_dir = Path(flac_dir)
+        recordings = []
+        flac_paths = sorted(flac_dir.glob('*.flac'))
+        for flac_path in flac_paths:
+            recording_id = flac_path.stem
+            lab_path = Path(sad_dir, recording_id + '.lab')
+            rttm_path = None
+            if rttm_dir is not None:
+                rttm_path = Path(rttm_dir, recording_id + '.rttm')
+            recordings.append(Recording(
+                recording_id, lab_path, flac_path, rttm_path))
+        return recordings
+
+
+def read_label_file(lab_path):
+    """Load segments from label file.
+
+    Parameters
+    ----------
+    lab_path : Path
+        Path to label file containing segments.
+
+    Returns
+    -------
+    list of Segment
+        Segments.
+    """
+    lab_path = Path(lab_path)
+    recording_id = lab_path.stem
+    with open(lab_path, 'r') as f:
         segs = []
-        for n, line in enumerate(f):
-            onset, offset, label = line.decode('utf-8').strip().split()
-            segment_id = '{}_{}'.format(
-                utt, str(n).zfill(4))
-            segs.append(Segment(segment_id, onset, offset, label))
+        for n, line in enumerate(f, start=1):
+            onset, offset, label = line.strip().split()
+            utterance_id = f'{recording_id}_{n:04d}'
+            segs.append(
+                Segment(utterance_id, onset, offset, label))
     return segs
 
 
-def load_rttm(fn):
-    """Load turns from RTTM file."""
-    with open(fn, 'rb') as f:
+def read_rttm_file(rttm_path):
+    """Load speaker turns from RTTM file.
+
+    Parameters
+    ----------
+    rttm_path : Path
+       Path to RTTM file.
+
+    Returns
+    -------
+    list of Turn
+       Speaker turns.
+    """
+    with open(rttm_path, 'r') as f:
         turns = []
         for line in f:
-            fields = line.decode('utf-8').strip().split()
-            turns.append(Turn(*fields))
+            fields = line.strip().split()
+            recording_id = fields[1]
+            onset = float(fields[3])
+            offset = onset + float(fields[4])
+            speaker_id = fields[7]
+            turns.append(
+                RTTMTurn(recording_id, speaker_id, onset, offset, line))
     return turns
 
 
-def write_rttm(fn, turns):
-    """Write turns to RTTM file."""
-    with open(fn, 'wb') as f:
-        turns = sorted(
-            turns, key=lambda x: (x.fid, float(x.onset), float(x.dur)))
-        for turn in turns:
-            line = ' '.join(turn)
-            f.write(line.encode('utf-8'))
-            f.write(b'\n')
-
-
-def write_wav_scpf(fn, utts, audio_dir, audio_ext='.flac'):
-    """Write script file containing WAV data for speech segments.
+def write_rttm_file(rttm_path, turns):
+    """Write speaker turns to RTTM file.
 
     Parameters
     ----------
-    fn : str
+    rttm_path : Path
+        Path to output RTTM file.
+
+    turns : list of Turn
+        Speaker turns.
+    """
+    with open(rttm_path, 'w') as f:
+        turns = sorted(
+            turns, key=lambda x: (x.recording_id, x.onset, x.offset))
+        for turn in turns:
+            f.write(turn.rttm_line)
+
+
+def write_wav_script_file(wav_scp_path, recordings, target_sr=16000):
+    """Write Kaldi ``wav.scp`` file.
+
+    Parameters
+    ----------
+    wav_scp_path : Path
         Path to output script file.
 
-    utts : list of str
-        List of unique identifiers.
+    recordings : list of Recording
+        Recordings.
 
-    audio_dir : str
-        Path to directory containing audio files.
-
-    audio_ext : str, optional
-        Audio file extension.
-        (Default: '.flac')
+    target_sr : int, optional
+        Resample audio to ``target_sr`` Hz.
+        (Default: 16000)
     """
-    with open(fn, 'wb') as f:
-        for utt in sorted(utts):
-            if audio_ext == '.flac':
-                wav_str = ('{} sox -t flac {}/{}.flac -t wav -r 16k '
-                           '-b 16 --channels 1 - |\n'.format(utt, audio_dir, utt))
-            elif audio_ext == '.wav':
-                wav_str = ('{} sox -t wav {}/{}.wav -t wav -r 16k '
-                           '-b 16 --channels 1 - |\n'.format(utt, audio_dir, utt))
-            f.write(wav_str.encode('utf-8'))
+    with open(wav_scp_path, 'w') as f:
+        for recording in recordings:
+            efname = (f'sox {recording.audio_path} -t wav -b 16 - '
+                      f'rate {target_sr} remix 1 |')
+            line = f'{recording.recording_id} {efname}\n'
+            f.write(line)
 
 
-def write_utt2spk(fn, utt_to_segs):
-    """Write ``utt2spk`` file."""
-    with open(fn, 'wb') as f:
-        for utt in sorted(utt_to_segs):
-            segs = sorted(
-                utt_to_segs[utt], key=lambda x: x.id)
-            for seg in segs:
-                line = '{} {}\n'.format(seg.id, utt)
-                f.write(line.encode('utf-8'))
+def write_utt2spk(utt2spk_path, recordings):
+    """Write ``utt2spk`` file.
+
+    Each utterance is assigned its corresponding recording id as the speaker.
+    """
+    with open(utt2spk_path, 'w') as f:
+        recordings = sorted(recordings, key=lambda x: x.recording_id)
+        for recording in recordings:
+            segments = sorted(recording.segments, key=lambda x: x.utterance_id)
+            for segment in segments:
+                line = f'{segment.utterance_id} {recording.recording_id}\n'
+                f.write(line)
 
 
-def write_segments_file(fn, utt_to_segs):
+def write_segments_file(segments_path, recordings):
     """Write ``segments`` file."""
-    with open(fn, 'wb') as f:
-        for utt in sorted(utt_to_segs):
-            segs = sorted(
-                utt_to_segs[utt], key=lambda x:	x.id)
-            for seg in segs:
-                line = '{} {} {} {}\n'.format(
-                    seg.id, utt, seg.onset, seg.offset)
-                f.write(line.encode('utf-8'))
+    with open(segments_path, 'w') as f:
+        recordings = sorted(recordings, key=lambda x: x.recording_id)
+        for recording in recordings:
+            segments = sorted(recording.segments, key=lambda x: x.utterance_id)
+            for segment in segments:
+                line = (f'{segment.utterance_id} {recording.recording_id} '
+                        f'{segment.onset} {segment.offset}\n')
+                f.write(line)
 
 
-def get_utt(fn):
-    """Get utt corresponding to filename."""
-    return os.path.splitext(os.path.basename(fn))[0]
-
-
-def write_rec2num_spk(fn, utt_to_turns):
-    """Write ``rec2num_spk``."""
-    utt_to_speakers = defaultdict(set)
-    for utt, turns in utt_to_turns.items():
-        for turn in turns:
-            utt_to_speakers[utt].add(turn.speaker_id)
-    with open(fn, 'wb') as f:
-        for utt in sorted(utt_to_speakers):
-            n_speakers = len(utt_to_speakers[utt])
-            line = '{} {}\n'.format(utt, n_speakers)
-            f.write(line.encode('utf-8'))
-
-
-def prepare_data_dir(data_dir, sad_dir, audio_dir, rttm_dir=None,
-                     audio_ext='.flac', sad_ext='.lab', rttm_ext='.rttm'):
-    """Prepare data directory.
-
-    This function will create the following files in ``data_dir``:
-
-    - wav.scp  --  script mapping audio to WAV data suitable for feature
-      extraction
-    - utt2spk  --  mapping from audio files to segment ids
-    - segments  --  listing of **ALL** speech segments in source recordings
-      according to segmentations from label files under ``sad_dir``
-    - rttm  --  combined RTTM file created from contents of RTTM files under
-      ``rttm_dir``; not written if ``rttm_dir`` is None
-    - reco2num_spk  --  mapping from audio files to number of reference
-      speakers present; not written if ``rttm_dir`` is None
-
-    Parameters
-    ----------
-    data_dir : str
-        Path to output directory.
-
-    sad_dir : str
-        Path to directory containing SAD label files. Assumes all files have
-        extension ``.lab``.
-
-    audio_dir : str
-        Path to directory containing audio files.
-
-    rttm_dir : str, optional
-        Path to directory containing RTTM files.
-        (Default: None)
-
-    audio_ext : str, optional
-        Audio file extension. Must be one of {'.wav', '.flac'}.
-        (Default: '.flac')
-
-    sad_ext : str, optional
-        SAD file extension.
-        (Default: '.lab')
-
-    rttm_ext : str, optional
-        RTTM file extension.
-        (Default: '.rttm')
-    """
-    # Load speech segments from label files and write WAV data script file,
-    # utt2spk, and combined segments files.
-    utt_to_segs = {}
-    for filename in glob.glob(os.path.join(sad_dir, '*' + sad_ext)):
-        segs = read_label_file(filename)
-        utt_to_segs[get_utt(filename)] = segs
-    write_wav_scpf(
-        os.path.join(data_dir, 'wav.scp'),
-        utt_to_segs.keys(), audio_dir, audio_ext)
-    write_utt2spk(
-        os.path.join(data_dir, 'utt2spk'), utt_to_segs)
-    write_segments_file(
-        os.path.join(data_dir, 'segments'), utt_to_segs)
-
-    # If reference RTTMs are present, write the combined RTTM
-    # and reference num speakers files.
-    if rttm_dir is not None:
-        utt_to_turns = {}
-        for filename in glob.glob(os.path.join(rttm_dir, '*' + rttm_ext)):
-            turns = load_rttm(filename)
-            utt_to_turns[get_utt(filename)] = turns
-        combined_turns = list(itertools.chain.from_iterable(
-            utt_to_turns.values()))
-        write_rttm(
-            os.path.join(data_dir, 'rttm'), combined_turns)
-        write_rec2num_spk(
-            os.path.join(data_dir, 'reco2num_spk'), utt_to_turns)
+def write_reco2num_spk(reco2num_spk_path, recordings):
+    """Write ``reco2num_spk`` file."""
+    with open(reco2num_spk_path, 'w') as f:
+        recordings = sorted(recordings, key=lambda x: x.recording_id)
+        for recording in recordings:
+            line = f'{recording.recording_id} {recording.num_speakers}\n'
+            f.write(line)
 
 
 def main():
@@ -198,37 +323,51 @@ def main():
         description='Prepare data directory for KALDI experiments.',
         add_help=True)
     parser.add_argument(
-        'data_dir', nargs=None, help='output data directory')
+        'data_dir', metavar='data-dir', type=Path,
+        help='path to output data directory')
     parser.add_argument(
-        'audio_dir', nargs=None, help='source audio directory')
+        'flac_dir', metavar='flac-dir', type=Path,
+        help='path to source FLAC directory')
     parser.add_argument(
-        'sad_dir', nargs=None, help='source SAD directory')
+        'sad_dir', metavar='sad-dir', type=Path,
+        help='path to source SAD directory')
     parser.add_argument(
-        '--rttm_dir', nargs=None, default=None, metavar='STR',
-        help='source RTTM directory')
+        '--rttm-dir', metavar='PATH', type=Path, nargs=None, default=None,
+        help='path to source RTTM directory')
     parser.add_argument(
-        '--audio_ext', nargs=None, default='.flac', metavar='STR',
-        choices=['.flac', '.wav'],
-        help='audio file extension (default: %(default)s)')
+        '--target-sr', metavar='SR', type=int, default=16000,
+        help='resample audio to SR Hz (default: %(default)s)')
     parser.add_argument(
-        '--sad_ext', nargs=None, default='.lab', metavar='STR',
-        help='SAD file extension (default: %(default)s)')
-    parser.add_argument(
-        '--rttm_ext', nargs=None, default='.rttm', metavar='STR',
-        help='RTTM file extension (default: %(default)s)')
+        '--rec-ids', metavar='FILE', type=Path, default=None,
+        help='read recordings to keep from FILE; ignore all other recordings')
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
     args = parser.parse_args()
 
-    if not os.path.exists(args.data_dir):
-        os.makedirs(args.data_dir)
-
-    prepare_data_dir(
-        args.data_dir, args.sad_dir, args.audio_dir, args.rttm_dir,
-        args.audio_ext, args.sad_ext, args.rttm_ext)
-
+    args.data_dir.mkdir(parents=True, exist_ok=True)
+    recordings = Recording.load_recordings(
+        args.sad_dir, args.flac_dir, args.rttm_dir)
+    if args.rec_ids is not None:
+        with open(args.rec_ids, 'r') as f:
+            keep_rec_ids = {line.strip() for line in f}
+        recordings = [rec for rec in recordings
+                      if rec.recording_id in keep_rec_ids]
+    write_wav_script_file(
+        Path(args.data_dir, 'wav.scp'), recordings, target_sr=args.target_sr)
+    write_segments_file(
+        Path(args.data_dir, 'segments'), recordings)
+    write_utt2spk(
+        Path(args.data_dir, 'utt2spk'), recordings)
+    write_reco2num_spk(
+        Path(args.data_dir, 'reco2num_spk'), recordings)
+    if args.rttm_dir is not None:
+        turns = list(itertools.chain.from_iterable(
+            recording.turns for recording in recordings))
+        write_rttm_file(
+            Path(args.data_dir, 'rttm'), turns)
 
 
 if __name__ == '__main__':
     main()
+

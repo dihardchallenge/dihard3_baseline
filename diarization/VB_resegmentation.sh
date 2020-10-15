@@ -15,22 +15,15 @@ minDur=1
 loopProb=0.9
 statScale=0.2
 llScale=1.0
-channel=1
+channel=0
 initialize=1
+PYTHON=python
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
-
-#if [ -f $KALDI_ROOT/tools/VB_diarization/VB_diarization.py ]; then
-#    echo "VB_diarization is installed so will use the script"
-#else
-#    echo "VB_diarization is not installed, Please install
-#          it using extras/install_diarization_VBHMM.sh in tools/"
-#    exit 1;
-#fi
 
 
 if [ $# != 5 ]; then
@@ -86,31 +79,21 @@ init_rttm_filename=$2
 output_dir=$3
 dubm_model=$4
 ie_model=$5
-which_python=/home/prachis/miniconda3/envs/mytorch/bin/python
+
 echo channel $channel
 
 mkdir -p $output_dir/rttm
 mkdir -p $output_dir/tmp
 sdata=$data_dir/split$nj;
 utils/split_data.sh $data_dir $nj || exit 1;
-
+JOB=1
 if [ $stage -le 0 ]; then
     $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
-      $which_python diarization/VB_resegmentation.py --max_speakers $max_speakers \
+      $PYTHON diarization/VB_resegmentation.py --max_speakers $max_speakers \
         --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
     --sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
     --loopProb $loopProb --statScale $statScale --llScale $llScale \
     --channel $channel --initialize $initialize \
         $sdata/JOB $init_rttm_filename $output_dir $dubm_model $ie_model || exit 1;
 
-    cp -r $output_dir/rttm $output_dir/rttm_stat${statScale}_loop${loopProb}
-    # /home/prachis/miniconda3/envs/py27/bin/python
-    # JOB=1
-    
-    # /home/prachis/miniconda3/bin/python diarization/VB_resegmentation.py --max-speakers $max_speakers \
-    #     --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
-    # --sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
-    # --loopProb $loopProb --statScale $statScale --llScale $llScale \
-    # --channel $channel --initialize $initialize \
-    #     $sdata/$JOB $init_rttm_filename $output_dir $dubm_model $ie_model || exit 1;
 fi

@@ -6,6 +6,7 @@ import pickle
 import kaldi_io
 import sys
 import argparse
+from pdb import set_trace as bp
 #import commands
 
 def get_utt_list(utt2spk_filename):
@@ -205,6 +206,7 @@ def main():
 
     # Load the MFCC features
     feats_dict = {}
+
     for key,mat in kaldi_io.read_mat_scp(feats_scp_filename):
         feats_dict[key] = mat
 

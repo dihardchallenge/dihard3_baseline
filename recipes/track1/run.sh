@@ -3,14 +3,14 @@
 set -e
 
 NJOBS=40
-PYTHON=python
+PYTHON=`which python`
 
 #####################################
 #### Set following paths  ###########
 #####################################
 # Path to root of DIHARD II dev release (LDC2019E31).
 #DIHARD_DEV_DIR=/scratch/nryant/dihard2/deliveries/LDC2019E31_Second_DIHARD_Challenge_Development_Data/
-DIHARD_DEV_DIR=/data1/SRE18/harshav/dihard_2018/v2/data/DEV_2019/LDC2019E31_Second_DIHARD_Challenge_Development_Data/
+DIHARD_DEV_DIR=/home/prachis/Dihard_2020/LDC2020E12_Third_DIHARD_Challenge_Development_Data/
 
 # Path to root of DIHARD II eval release (LDC2019E32).
 #DIHARD_EVAL_DIR=/scratch/nryant/dihard2/deliveries/LDC2019E32_Second_DIHARD_Challenge_Evaluation_Data_SCRUBBED/
@@ -42,29 +42,30 @@ echo $PWD
 
 # Prepare data directory for DEV set.
 echo "Preparing data directory for DEV set..."
-DEV_DATA_DIR=data/dihard_dev_2019_track1
+DEV_DATA_DIR=data/dihard_dev_2020_track1
 rm -fr $DEV_DATA_DIR
 local/make_data_dir.py \
-   --audio_ext '.flac' \
-   --rttm_dir $DIHARD_DEV_DIR/data/single_channel/rttm \
-   $DEV_DATA_DIR \
-   $DIHARD_DEV_DIR/data/single_channel/flac \
-   $DIHARD_DEV_DIR/data/single_channel/sad
-utils/fix_data_dir.sh $DEV_DATA_DIR
+    --rttm-dir $DIHARD_DEV_DIR/data/rttm \
+    $DEV_DATA_DIR \
+    $DIHARD_DEV_DIR/data/flac \
+    $DIHARD_DEV_DIR/data/sad
+utils/fix_data_dir.sh ${DEV_DATA_DIR}
+
+#exit;
 
 # Prepare data directory for EVAL set.
 echo "Preparing data directory for EVAL set...."
-EVAL_DATA_DIR=data/dihard_eval_2019_track1
+EVAL_DATA_DIR=data/dihard_eval_2020_track1
 rm -fr $EVAL_DATA_DIR
 local/make_data_dir.py \
-   --audio_ext	'.flac'	\
    $EVAL_DATA_DIR \
-   $DIHARD_EVAL_DIR/data/single_channel/flac \
-   $DIHARD_EVAL_DIR/data/single_channel/sad
+   $DIHARD_EVAL_DIR/data/flac \
+   $DIHARD_EVAL_DIR/data/sad
 #utils/fix_data_dir.sh $EVAL_DATA_DIR
 
 # Diarize.
 echo "Diarizing..."
+
 ./alltracksrun.sh --tracknum 1 --DIHARD_DEV_DIR $DIHARD_DEV_DIR \
 	--plda_path exp/xvector_nnet_1a/plda_track1 \
 	--DSCORE_DIR $DSCORE_DIR --njobs $NJOBS

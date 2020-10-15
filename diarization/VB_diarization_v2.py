@@ -14,11 +14,10 @@
 
 #
 # Revision History
-#   L. Burget   16/07/13 01:00AM - original version
-#   L. Burget   20/06/17 12:07AM - np.asarray replaced by .toarray()
-#                                - minor bug fix in initializing q
-#                                - minor bug fix in ELBO calculation
-#                                - few more optimizations
+#   L. Burget  - original version
+#  S.Prachi - Modified version described in
+# P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram, "LEAP Diarization System for the Second DIHARD Challenge", Interspeech 2019.
+
 
 import numpy as np
 from scipy.sparse import coo_matrix
@@ -152,10 +151,15 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   NN_stat1 =  exp_ne(ll - G[:,np.newaxis])
   NN = NN_stat1 * statScale
   NN[NN<sparsityThr] = 0.0
-  NN_stat1[NN_stat1<sparsityThr] = 0.0
+  
   #Kx = np.sum(NN * (np.log(w) - np.log(NN)), 1)
   NN = coo_matrix(NN) # represent zero-order stats using sparse matrix
-  NN_stat1 = coo_matrix(NN_stat1)
+  if statScale > 1.0 :
+    NN_stat1[NN_stat1<sparsityThr] = 0.0
+    NN_stat1 = coo_matrix(NN_stat1)
+  else:
+    del NN_stat1
+
   print('Sparsity: ', len(NN.row), float(len(NN.row))/np.prod(NN.shape))
   LL = np.sum(G) # total log-likelihod as calculated using UBM
 
@@ -166,25 +170,26 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   # Calculate per-frame first order statistics projected into the R-dim. subspace
   # V^T \Sigma^{-1} F_m
   fold_local=os.getcwd()
-  # modelpath='{}/batchfiles/temp/VtiEFdir400_full_{}/'.format(fold_local,statScale)
-  modelpath='{}/batchfiles/temp/VtiEFdir400_ami_{}/'.format(fold_local,1.0)
+  modelpath='{}/batchfiles/temp/VtiEFdir400_full_{}/'.format(fold_local,1.0)
   model=modelpath+'/VtiEF_'+filename+'.npy'
-  #model = 'not_valid'
 
-
-  # if not os.path.isdir(modelpath):
-  #     os.makedirs(modelpath)
 
   if os.path.isfile(model):
       VtiEF=np.load(model)
   else:
-    #NN_stat1 = NN
-    F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
-                     (NN_stat1.row.repeat(D), NN_stat1.col.repeat(D)*D+np.tile(range(D), len(NN_stat1.col)))), shape=(nframes, D*C))
-    VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
-    
-    #print(VtiEF)
-    #np.save(model,VtiEF)
+    if statScale > 1.0 :  # scaling first order statistics 
+      if not os.path.isdir(modelpath):
+          os.makedirs(modelpath)
+
+      F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
+                       (NN_stat1.row.repeat(D), NN_stat1.col.repeat(D)*D+np.tile(range(D), len(NN_stat1.col)))), shape=(nframes, D*C))
+      VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
+      np.save(model,VtiEF)
+    else:
+      F_s = coo_matrix((((X[NN.row]-m[NN.col])*NN.data[:,np.newaxis]).flat,
+                       (NN.row.repeat(D), NN.col.repeat(D)*D+np.tile(range(D), len(NN.col)))), shape=(nframes, D*C))
+      VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
+
   ## The code above is only efficient implementation of the following comented code
   #VtiEF = 0;
   #for ii in range(C):
@@ -203,7 +208,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
     downsampler=np.array(1)
 
   NN=NN.toarray()
-  #NN,VtiEF,G=refinement(NN,VtiEF,G)
+  NN,VtiEF,G=refinement(NN,VtiEF,G)  # for further refinement if needed
   
   Li = [[LL]] # for the 0-th iteration,
   if ref is not None:
