@@ -293,12 +293,15 @@ def score_recordings(recordings, metrics, domains=None, n_jobs=1):
         f = partial(_score_one_recording, metrics=metrics)
         for recording, result in zip(recordings, pool.imap(f, recordings)):
             results[recording.uri] = result
-        
+
     # Aggregate by domain.
     per_domain_metrics = {}  # domain name ==> metrics for that domain.
     for dname in domains:
-        uris = sorted(domains[dname])
-        domain_results = [results[uri] for uri in uris]
+        domain_results = []
+        for uri in sorted(domains[dname]):
+            if uri not in results:
+                continue
+            domain_results.append(results[uri])
         domain_metrics = {}
         for metric_name in metrics:
             domain_metrics[metric_name] = sum_metrics(
@@ -396,6 +399,11 @@ def main():
     annotated = {}
     if args.uem_path:
         annotated = read_uem_file(args.uem_path)
+
+        ref_annotations = {uri:ann for uri, ann in ref_annotations.items()
+                           if uri in annotated}
+        sys_annotations = {uri:ann for uri, ann	in sys_annotations.items()
+                           if uri in annotated}
     recordings = Recording.annotations_to_recordings(
         ref_annotations, sys_annotations, annotated=annotated)
     domains = load_domains(args.recordings_table)

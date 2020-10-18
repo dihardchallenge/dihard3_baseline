@@ -104,7 +104,8 @@ fi
 if [ $stage -le 3  -a  $eval_sad = "true" ]; then
     echo "$0: Scoring SAD output on DEV set..."
     local/segmentation/score_sad.py \
-	--n-jobs $nj --collar 0.0\
+	--n-jobs $nj --collar 0.0 \
+	-u $DIHARD_DEV_DIR/data/single_channel/uem/all.uem \
 	data/dihard2_dev/segments \
 	data/dihard2_dev_seg/segments \
 	local/dihard2_dev_recordings.tbl
@@ -113,9 +114,9 @@ if [ $stage -le 3  -a  $eval_sad = "true" ]; then
 
     echo "$0: Scoring SAD output on EVAL set..."
     local/segmentation/score_sad.py \
-        --n-jobs $nj --collar 0.0\
+        --n-jobs $nj --collar 0.0 \
+	-u $DIHARD_EVAL_DIR/data/single_channel/uem/all.uem \
         data/dihard2_eval/segments \
         data/dihard2_eval_seg/segments \
         local/dihard2_eval_recordings.tbl
-
 fi
