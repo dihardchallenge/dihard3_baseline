@@ -208,7 +208,7 @@ if [ $stage -le 6 ]; then
         -s $DEV_RTTM_DIR/*.rttm \
         > ${TRACK_DIR}/metrics_dev.stdout 2> ${TRACK_DIR}/metrics_dev.stderr
 fi
-
+#exit;
 # VBHMM Resegmentation
 if [ $stage -le 7 ]; then
     echo "Performing VB Resegmentation..."
@@ -219,7 +219,7 @@ if [ $stage -le 7 ]; then
 
     DEV_RTTM_DIR=${DEV_RTTM_DIR}${isvb}
     #EVAL_RTTM_DIR=${TRACK_DIR}/rttm_eval
-    ./run_vb_dihard3.sh --stage 0 --nnet_dir $nnet_dir --init_rttm_path $init_rttm_path --output_dir_overall $DEV_RTTM_DIR
+    ./run_vb_dihard3.sh --stage 0 --data_dir ${dihard_dev} --nnet_dir $nnet_dir --init_rttm_path $init_rttm_path --output_dir_overall $DEV_RTTM_DIR
 
     # Score system outputs for DEV set against reference.
     echo "Scoring DEV set RTTM..."

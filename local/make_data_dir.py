@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Poppulate Kaldi data directory for diarization.
+"""Populate Kaldi data directory for diarization.
 
 The resulting data directory contains the following files:
 
@@ -370,4 +370,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

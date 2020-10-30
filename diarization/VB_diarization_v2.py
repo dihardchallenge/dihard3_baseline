@@ -27,37 +27,6 @@ import numexpr as ne # the dependency on this modul can be avoided by replacing
                        # logsumexp_ne and exp_ne with logsumexp and np.exp
 from pdb import set_trace as bp
 
-def refinement(NN,VtiEF,G):
-    delM=5
-    lamda=20
-    delm=np.arange(-delM,delM+1)
-    Pdelm=np.exp(-lamda*np.absolute(delm))
-    NNnew=np.empty(NN.shape)
-    VtiEFnew=np.empty(VtiEF.shape)
-    Gnew=np.empty(G.shape)
-
-
-    for m in range(delM+1):                
-        indices=m+delm[delM-m:]
-        NNnew[m]=Pdelm[delM-m:].dot(NN[indices])
-        VtiEFnew[m]=Pdelm[delM-m:].dot(VtiEF[indices])
-        Gnew[m]=Pdelm[delM-m:].dot(G[indices])
-
-    for m in range(delM+1,len(NN)-delM):
-        indices=m+delm
-        NNnew[m]=Pdelm.dot(NN[indices])
-        VtiEFnew[m]=Pdelm.dot(VtiEF[indices])
-        Gnew[m]=Pdelm.dot(G[indices])
-
-    for m in range(len(NN)-delM,len(NN)):
-        indices=m+delm[:delM-(m-len(NN))]   
-        NNnew[m]=Pdelm[:delM-(m-len(NN))].dot(NN[indices])
-        VtiEFnew[m]=Pdelm[:delM-(m-len(NN))].dot(VtiEF[indices])
-        Gnew[m]=Pdelm[:delM-(m-len(NN))].dot(G[indices])
-
-    return NNnew,VtiEFnew,Gnew
-
-
 #[q sp Li] =
 def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
                    maxSpeakers = 10, maxIters = 10,
@@ -169,26 +138,14 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
 
   # Calculate per-frame first order statistics projected into the R-dim. subspace
   # V^T \Sigma^{-1} F_m
-  fold_local=os.getcwd()
-  modelpath='{}/batchfiles/temp/VtiEFdir400_full_{}/'.format(fold_local,1.0)
-  model=modelpath+'/VtiEF_'+filename+'.npy'
-
-
-  if os.path.isfile(model):
-      VtiEF=np.load(model)
-  else:
-    if statScale > 1.0 :  # scaling first order statistics 
-      if not os.path.isdir(modelpath):
-          os.makedirs(modelpath)
-
-      F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
+  if statScale > 1.0 :  # scaling first order statistics
+    F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
                        (NN_stat1.row.repeat(D), NN_stat1.col.repeat(D)*D+np.tile(range(D), len(NN_stat1.col)))), shape=(nframes, D*C))
-      VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
-      np.save(model,VtiEF)
-    else:
-      F_s = coo_matrix((((X[NN.row]-m[NN.col])*NN.data[:,np.newaxis]).flat,
+    VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
+  else:
+    F_s = coo_matrix((((X[NN.row]-m[NN.col])*NN.data[:,np.newaxis]).flat,
                        (NN.row.repeat(D), NN.col.repeat(D)*D+np.tile(range(D), len(NN.col)))), shape=(nframes, D*C))
-      VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
+    VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
 
   ## The code above is only efficient implementation of the following comented code
   #VtiEF = 0;
@@ -208,8 +165,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
     downsampler=np.array(1)
 
   NN=NN.toarray()
-  NN,VtiEF,G=refinement(NN,VtiEF,G)  # for further refinement if needed
-  
+    
   Li = [[LL]] # for the 0-th iteration,
   if ref is not None:
     Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)]

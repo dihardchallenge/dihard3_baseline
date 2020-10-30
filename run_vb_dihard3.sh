@@ -7,11 +7,9 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
 sre_root=/export/corpora5/SRE
-stage=2
+stage=0
 nnet_dir=exp/xvector_nnet_1a/
-data_dir=data/dihard_dev_2020_track1
-dataset=dihard_dev_2020_whole
-whole_data_dir=data/$dataset
+data_dir=dihard_dev_2020_track
 init_rttm_path=rttm_dev
 #Variational Bayes resegmentation options
 VB_resegmentation=true
@@ -21,12 +19,12 @@ output_dir_overall=default
 njobs_init=80
 . utils/parse_options.sh
 echo $data_dir;
-#data_dir=data/$dataset
-#dataset_whole=${dataset}_whole
-#whole_data_dir=data/$dataset_whole
+
+dataset=${data_dir}_whole
+whole_data_dir=data/$dataset
 
 if [ $stage -le 0 ]; then
-  utils/data/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
+  utils/data/convert_data_dir_to_whole.sh data/$data_dir $whole_data_dir
 fi
 
 if [ $stage -le 1 ]; then
@@ -38,7 +36,7 @@ if [ $stage -le 1 ]; then
     steps/make_mfcc.sh --mfcc-config conf/mfcc_vb.conf --nj 40 \
       --cmd "$train_cmd" --write-utt2num-frames true \
       data/$name exp/make_mfcc $mfccdir
-    cp $data_dir/rttm data/${name}/rttm
+    cp data/${data_dir}/rttm data/${name}/rttm
     utils/fix_data_dir.sh data/$name
   done
 fi
