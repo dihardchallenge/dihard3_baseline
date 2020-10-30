@@ -8,9 +8,10 @@ PYTHON=python
 SCRIPT_DIR=`realpath $(dirname "$0")`
 
 # Install python deps.
-echo "Installing required Python packages as user."
-if ! $PIP install --user intervaltree numpy scipy tabulate; then
+echo "Installing required Python packages."
+if ! $PIP install intervaltree numpy scipy tabulate; then
     echo ""
+    echo "Some Python packages failed to install. Please check pip error output (above)"
     echo "Some Python packages failed to install. Please check pip error output (above)"
     echo "and resolve."
     echo ""
