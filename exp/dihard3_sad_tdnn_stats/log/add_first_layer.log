@@ -1,0 +1,8 @@
+# nnet3-init --srand=0 exp/dihard3_sad_tdnn_stats/init.raw exp/dihard3_sad_tdnn_stats/configs/final.config exp/dihard3_sad_tdnn_stats/0.raw 
+# Started at Tue Oct 13 17:28:09 EDT 2020
+#
+nnet3-init --srand=0 exp/dihard3_sad_tdnn_stats/init.raw exp/dihard3_sad_tdnn_stats/configs/final.config exp/dihard3_sad_tdnn_stats/0.raw 
+LOG (nnet3-init[5.5.810~1-76a979]:main():nnet3-init.cc:68) Read raw neural net from exp/dihard3_sad_tdnn_stats/init.raw
+LOG (nnet3-init[5.5.810~1-76a979]:main():nnet3-init.cc:80) Initialized raw neural net and wrote it to exp/dihard3_sad_tdnn_stats/0.raw
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue Oct 13 17:28:09 EDT 2020, elapsed time 0 seconds

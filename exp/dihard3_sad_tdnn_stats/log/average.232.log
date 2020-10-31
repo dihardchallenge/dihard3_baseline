@@ -1,0 +1,7 @@
+# nnet3-average exp/dihard3_sad_tdnn_stats/233.1.raw exp/dihard3_sad_tdnn_stats/233.2.raw exp/dihard3_sad_tdnn_stats/233.3.raw exp/dihard3_sad_tdnn_stats/233.4.raw exp/dihard3_sad_tdnn_stats/233.5.raw exp/dihard3_sad_tdnn_stats/233.6.raw exp/dihard3_sad_tdnn_stats/233.raw 
+# Started at Tue Oct 13 17:56:45 EDT 2020
+#
+nnet3-average exp/dihard3_sad_tdnn_stats/233.1.raw exp/dihard3_sad_tdnn_stats/233.2.raw exp/dihard3_sad_tdnn_stats/233.3.raw exp/dihard3_sad_tdnn_stats/233.4.raw exp/dihard3_sad_tdnn_stats/233.5.raw exp/dihard3_sad_tdnn_stats/233.6.raw exp/dihard3_sad_tdnn_stats/233.raw 
+LOG (nnet3-average[5.5.810~1-76a979]:main():nnet3-average.cc:164) Averaged parameters of 6 neural nets, and wrote to exp/dihard3_sad_tdnn_stats/233.raw
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue Oct 13 17:56:45 EDT 2020, elapsed time 0 seconds

@@ -1,0 +1,11 @@
+# nnet3-acc-lda-stats --rand-prune=4.0 exp/dihard3_sad_tdnn_stats/init.raw "ark:nnet3-copy-egs  ark:exp/dihard3_sad_tdnn_stats/egs/egs.4.ark ark:- |" exp/dihard3_sad_tdnn_stats/4.lda_stats 
+# Started at Tue Oct 13 17:28:07 EDT 2020
+#
+nnet3-acc-lda-stats --rand-prune=4.0 exp/dihard3_sad_tdnn_stats/init.raw 'ark:nnet3-copy-egs  ark:exp/dihard3_sad_tdnn_stats/egs/egs.4.ark ark:- |' exp/dihard3_sad_tdnn_stats/4.lda_stats 
+nnet3-copy-egs ark:exp/dihard3_sad_tdnn_stats/egs/egs.4.ark ark:- 
+LOG (nnet3-copy-egs[5.5.810~1-76a979]:main():nnet3-copy-egs.cc:431) Read 18822 neural-network training examples, wrote 18822, 0 examples had errors.
+LOG (nnet3-acc-lda-stats[5.5.810~1-76a979]:main():nnet3-acc-lda-stats.cc:185) Processed 18822 examples.
+LOG (nnet3-acc-lda-stats[5.5.810~1-76a979]:WriteStats():nnet3-acc-lda-stats.cc:59) Accumulated stats, soft frame count = 131300.  Wrote to exp/dihard3_sad_tdnn_stats/4.lda_stats
+LOG (nnet3-acc-lda-stats[5.5.810~1-76a979]:~CachingOptimizingCompiler():nnet-optimize.cc:710) 0.0174 seconds taken in nnet3 compilation total (breakdown: 0.000786 compilation, 0.000285 optimization, 0 shortcut expansion, 0.000135 checking, 5.36e-05 computing indexes, 0.0161 misc.) + 0 I/O.
+# Accounting: time=2 threads=1
+# Ended (code 0) at Tue Oct 13 17:28:09 EDT 2020, elapsed time 2 seconds
