@@ -108,7 +108,8 @@ if [ $stage -eq -7 ]; then
     cmn_dir=data/${dihard_eval}_cmn
     diarization/nnet3/xvector/extract_xvectors.sh \
 	--cmd "$train_cmd --mem 5G" --nj $eval_njobs \
-	--min-segment 0.25 $nnet_dir \
+	--window 1.5 --period 0.25 --apply-cmn false \
+        --min-segment 0.25 $nnet_dir \
 	$cmn_dir $EVAL_XVEC_DIR
     echo "X-vector extraction finished for EVAL. See $EVAL_XVEC_DIR/log for logs."
 fi
