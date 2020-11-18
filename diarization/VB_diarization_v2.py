@@ -14,8 +14,8 @@
 
 #
 # Revision History
-#   L. Burget  - original version
-#  S.Prachi - Modified version described in
+# L. Burget  - original version
+# P. Singh - Modified version described in
 # P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram, "LEAP Diarization System for the Second DIHARD Challenge", Interspeech 2019.
 
 
@@ -138,7 +138,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
 
   # Calculate per-frame first order statistics projected into the R-dim. subspace
   # V^T \Sigma^{-1} F_m
-  if statScale > 1.0 :  # scaling first order statistics
+  if statScale > 1.0 :  # unscaled first order statistics
     F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
                        (NN_stat1.row.repeat(D), NN_stat1.col.repeat(D)*D+np.tile(range(D), len(NN_stat1.col)))), shape=(nframes, D*C))
     VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
