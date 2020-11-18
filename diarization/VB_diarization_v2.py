@@ -25,7 +25,7 @@ import scipy.linalg as spl
 import os
 import numexpr as ne # the dependency on this modul can be avoided by replacing
                        # logsumexp_ne and exp_ne with logsumexp and np.exp
-from pdb import set_trace as bp
+
 
 #[q sp Li] =
 def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
@@ -139,6 +139,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   # Calculate per-frame first order statistics projected into the R-dim. subspace
   # V^T \Sigma^{-1} F_m
   if statScale > 1.0 :  # unscaled first order statistics
+    # Reference: P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram, "LEAP Diarization System for the Second DIHARD Challenge", Interspeech 2019.
     F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
                        (NN_stat1.row.repeat(D), NN_stat1.col.repeat(D)*D+np.tile(range(D), len(NN_stat1.col)))), shape=(nframes, D*C))
     VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
