@@ -34,7 +34,7 @@ def utt_num_frames_mapping(utt2num_frames_filename):
     return utt2num_frames
 
 
-def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_filename):
+def create_ref_file(uttname, utt2num_frames, full_rttm_filename):
     """Return frame-wise labeling for  based on the initial diarization.
 
     The resulting labeling is an an array whose ``i``-th entry provides the label
@@ -58,21 +58,11 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
     full_rttm_filename : Path
         Path to RTTM containing **ALL** segments for **ALL** recordings.
 
-    temp_dir : Path
-        Path to temporary working directory.
-
-    rttm_filename : str
-        Store an RTTM containing a copy of original diarization for the recording
-        in ``temp_dir/`` with ``rttm_filename`` as it's basename.
-
     Returns
     -------
     ref : ndarray, (n_frames,)
         Framewise speaker labels.
     """
-    utt_rttm_fn = Path(temp_dir, rttm_filename)
-    utt_rttm_file = open(utt_rttm_fn, 'w')
-
     num_frames = utt2num_frames[uttname]
 
     # We use 0 to denote silence frames and 1 to denote overlapping frames.
@@ -83,17 +73,14 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
     with open(full_rttm_filename, 'r') as fh:
         content = fh.readlines()
     for line in content:
-        line = line.strip('\n')
-        line_split = line.split()
-        uttname_line = line_split[1]
+        fields = line.strip().split()
+        uttname_line = fields[1]
         if uttname != uttname_line:
             continue
-        else:
-            utt_rttm_file.write(line + "\n")
-        start_time = int(float(line_split[3]) * 100)
-        duration_time = int(float(line_split[4]) * 100)
+        start_time = int(float(fields[3]) * 100)
+        duration_time = int(float(fields[4]) * 100)
         end_time = start_time + duration_time
-        spkname = line_split[7]
+        spkname = fields[7]
         if spkname not in speaker_dict.keys():
             spk_idx = num_spk + 2
             speaker_dict[spkname] = spk_idx
@@ -129,8 +116,7 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
     dur_dist = " ".join(duration_list)
     print(f"DISTRIBUTION OF SPEAKER {dur_dist}")
     print("")
-    sys.stdout.flush()
-    utt_rttm_file.close()
+
     return ref
 
 
@@ -250,7 +236,6 @@ def main():
     utt2spk_filename = Path(args.data_dir, "utt2spk")
     utt2num_frames_filename = Path(args.data_dir, "utt2num_frames")
     feats_scp_filename = Path(args.data_dir, "feats.scp")
-    temp_dir = Path(args.output_dir, "tmp")
     rttm_dir = Path(args.output_dir, "rttm")
 
     utt_list = get_utt_list(utt2spk_filename)
@@ -300,8 +285,7 @@ def main():
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
         init_ref = create_ref_file(
-            utt, utt2num_frames, args.init_rttm_filename, temp_dir,
-            f"{utt}.rttm")
+            utt, utt2num_frames, args.init_rttm_filename)
 
         # Ground truth of the diarization.
         X = feats_dict[utt]
