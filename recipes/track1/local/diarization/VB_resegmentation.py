@@ -35,6 +35,41 @@ def utt_num_frames_mapping(utt2num_frames_filename):
 
 
 def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_filename):
+    """Return frame-wise labeling for  based on the initial diarization.
+
+    The resulting labeling is an an array whose ``i``-th entry provides the label
+    for frame ``i``, which can be one of the following integer values:
+
+    - 0:   indicates no speaker present (i.e., silence)
+    - 1:   indicates more than one speaker present (i.e., overlapped speech)
+    - n>1: integer id of the SOLE speaker present in frame
+
+    Speakers are assigned integer ids >1 based on their first utterance in the
+    recording.
+
+    Parameters
+    ----------
+    uttname : str
+        URI of recording to extract labeling for.
+
+    utt2num_frames : dict
+        Mapping from recording URIs to lengths in frames.
+
+    full_rttm_filename : Path
+        Path to RTTM containing **ALL** segments for **ALL** recordings.
+
+    temp_dir : Path
+        Path to temporary working directory.
+
+    rttm_filename : str
+        Store an RTTM containing a copy of original diarization for the recording
+        in ``temp_dir/`` with ``rttm_filename`` as it's basename.
+
+    Returns
+    -------
+    ref : ndarray, (n_frames,)
+        Framewise speaker labels.
+    """
     utt_rttm_fn = Path(temp_dir, rttm_filename)
     utt_rttm_file = open(utt_rttm_fn, 'w')
 
@@ -210,7 +245,7 @@ def main():
 
     # Set NumPy RNG to ensure reproducibility.
     np.random.seed(args.seed)
-    
+
     # The data directory should contain wav.scp, spk2utt, utt2spk and feats.scp
     utt2spk_filename = Path(args.data_dir, "utt2spk")
     utt2num_frames_filename = Path(args.data_dir, "utt2num_frames")
