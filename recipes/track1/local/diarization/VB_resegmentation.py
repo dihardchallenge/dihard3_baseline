@@ -18,7 +18,7 @@ def get_utt_list(utt2spk_filename):
         line = line.strip('\n')
         line_split = line.split()
         utt_list.append(line_split[0])
-    print("{} UTTERANCES IN TOTAL".format(len(utt_list)))
+    print(f"{len(utt_list)} UTTERANCES IN TOTAL")
     return utt_list
 
 
@@ -34,7 +34,8 @@ def utt_num_frames_mapping(utt2num_frames_filename):
 
 
 def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_filename):
-    utt_rttm_file = open("{}/{}".format(temp_dir, rttm_filename), 'w')
+    utt_rttm_fn = f"{temp_dir}/{rttm_filename}"
+    utt_rttm_file = open(utt_rttm_fn, 'w')
 
     num_frames = utt2num_frames[uttname]
 
@@ -66,7 +67,7 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
             if i < 0:
                 raise ValueError(line)
             elif i >= num_frames:
-                print("{} EXCEED NUM_FRAMES".format(line))
+                print(f"{line} EXCEED NUM_FRAMES")
                 break
             else:
                 if ref[i] == 0:
@@ -75,17 +76,22 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
                     ref[i] = 1 # The overlapping speech is marked as 1.
     ref = ref.astype(int)
 
-    print("{} SPEAKERS IN {}".format(num_spk, uttname))
-    print("{} TOTAL, {} SILENCE({:.0f}%), {} OVERLAPPING({:.0f}%)".format(
-        len(ref), np.sum(ref == 0), 100.0 * np.sum(ref == 0) / len(ref),
-        np.sum(ref == 1), 100.0 * np.sum(ref == 1) / len(ref)))
+    print(f"{num_spk} SPEAKERS IN {uttname}")
+    n_ref_frames = len(ref)
+    n_sil_frames = np.sum(ref == 0)
+    sil_prop = 100.* n_sil_frames / n_ref_frames
+    n_overlap_frames = np.sum(ref == 1)
+    overlap_prop = 100.* n_overlap_frames / n_ref_frames
+    print(f"{n_ref_frames} TOTAL, {n_sil_frames} SILENCE({sil_prop:.0f}%), "
+          f"{n_overlap_frames} OVERLAPPING({overlap_prop:.0f}%)")
 
     duration_list = []
     for i in range(num_spk):
         duration_list.append(1.0 * np.sum(ref == (i + 2)) / len(ref))
     duration_list.sort()
     duration_list = map(lambda x: '{0:.2f}'.format(x), duration_list)
-    print("DISTRIBUTION OF SPEAKER {}".format(" ".join(duration_list)))
+    dur_dist = " ".join(duration_list)
+    print(f"DISTRIBUTION OF SPEAKER {dur_dist}")
     print("")
     sys.stdout.flush()
     utt_rttm_file.close()
@@ -110,12 +116,15 @@ def create_rttm_output(uttname, predicted_label, output_dir, channel):
     if last_label != 0:
         idx_list.append([start_idx, num_frames, last_label])
 
-    with open("{}/{}_predict.rttm".format(output_dir, uttname), 'w') as fh:
+    rttmf = f"{output_dir}/{uttname}_predict.rttm"
+    with open(rttmf, 'w') as fh:
         for start_frame, end_frame, label in idx_list:
-            duration = end_frame - start_frame
-            fh.write("SPEAKER {} {} {:.2f} {:.2f} <NA> <NA> {} <NA> <NA>\n".format(
-                uttname, channel, start_frame / 100.0, duration / 100.0, label))
+            onset = start_frame / 100.
+            duration = (end_frame - start_frame) / 100.
+            line = (f'SPEAKER {uttname} {channel} {onset:.2f} {duration:.2f} <NA> <NA> {label} <NA> <NA>\n')
+            fh.write(line)
     return 0
+
 
 def match_DER(string):
     string_split = string.split('\n')
@@ -123,6 +132,7 @@ def match_DER(string):
         if "OVERALL SPEAKER DIARIZATION ERROR" in line:
             return line
     return 0
+
 
 def main():
     parser = argparse.ArgumentParser(description='VB Resegmentation')
@@ -195,11 +205,11 @@ def main():
     init_rttm_filename = args.init_rttm_filename
 
     # The data directory should contain wav.scp, spk2utt, utt2spk and feats.scp
-    utt2spk_filename = "{}/utt2spk".format(data_dir)
-    utt2num_frames_filename = "{}/utt2num_frames".format(data_dir)
-    feats_scp_filename = "{}/feats.scp".format(data_dir)
-    temp_dir = "{}/tmp".format(args.output_dir)
-    rttm_dir = "{}/rttm".format(args.output_dir)
+    utt2spk_filename = f"{data_dir}/utt2spk"
+    utt2num_frames_filename = f"{data_dir}/utt2num_frames"
+    feats_scp_filename = f"{data_dir}/feats.scp"
+    temp_dir = f"{args.output_dir}/tmp"
+    rttm_dir = f"{args.output_dir}/rttm"
 
     utt_list = get_utt_list(utt2spk_filename)
     utt2num_frames = utt_num_frames_mapping(utt2num_frames_filename)
@@ -249,7 +259,7 @@ def main():
         # label starts from 2.
         init_ref = create_ref_file(
             utt, utt2num_frames, init_rttm_filename, temp_dir,
-            "{}.rttm".format(utt))
+            f"{utt}.rttm")
 
         # Ground truth of the diarization.
         X = feats_dict[utt]
@@ -264,7 +274,8 @@ def main():
         init_ref_voiced = init_ref[mask] - 2
 
         if X_voiced.shape[0] == 0:
-            print("Warning: {} has no voiced frames in the initialization file".format(utt))
+            print(
+                f"Warning: {utt} has no voiced frames in the initialization file")
             continue
 
         # Initialize the posterior of each speaker based on the clustering result.
@@ -305,8 +316,10 @@ def main():
                 duration_list.append(1.0 * num_frames / len(predicted_label))
         duration_list.sort()
         duration_list = list(map(lambda x: '{0:.2f}'.format(x), duration_list))
-        print("PREDICTED {} SPEAKERS".format(len(duration_list)))
-        print("DISTRIBUTION {}".format(" ".join(duration_list)))
+        n_speakers = len(duration_list)
+        dur_dist = " ".join(duration_list)
+        print(f"PREDICTED {n_speakers} SPEAKERS")
+        print(f"DISTRIBUTION {dur_dist}")
         print("sp_out", sp_out)
         print("L_out", L_out)
 
