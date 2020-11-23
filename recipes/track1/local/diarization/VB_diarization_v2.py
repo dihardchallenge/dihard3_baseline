@@ -14,9 +14,12 @@
 
 #
 # Revision History
-#   L. Burget  - original version
-#  S.Prachi - Modified version described in
-# P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram, "LEAP Diarization System for the Second DIHARD Challenge", Interspeech 2019.
+# - L. Burget  - original version
+# - S. Prachi - Modified version described in
+#
+#       P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
+#       "LEAP Diarization System for the Second DIHARD Challenge".
+#       Proc. of Interspeech 2019.
 
 
 import numpy as np
@@ -90,8 +93,9 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   """
 
   # The references to equations corresponds to the technical report:
-  # Kenny, P. Bayesian Analysis of Speaker Diarization with Eigenvoice Priors,
-  # Montreal, CRIM, May 2008.
+  #
+  #     Kenny, P. (2008). "Bayesian Analysis of Speaker Diarization with
+  #     Eigenvoice Priors." Technical Report. Montreal, CRIM.
 
   D=X.shape[1]  # feature dimensionality
   C=len(w)      # number of mixture components
