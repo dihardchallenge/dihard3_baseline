@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+from pathlib import Path
 import pickle
 import sys
 
@@ -34,7 +35,7 @@ def utt_num_frames_mapping(utt2num_frames_filename):
 
 
 def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_filename):
-    utt_rttm_fn = f"{temp_dir}/{rttm_filename}"
+    utt_rttm_fn = Path(temp_dir, rttm_filename)
     utt_rttm_file = open(utt_rttm_fn, 'w')
 
     num_frames = utt2num_frames[uttname]
@@ -116,7 +117,7 @@ def create_rttm_output(uttname, predicted_label, output_dir, channel):
     if last_label != 0:
         idx_list.append([start_idx, num_frames, last_label])
 
-    rttmf = f"{output_dir}/{uttname}_predict.rttm"
+    rttmf = Path(output_dir, f"{uttname}_predict.rttm")
     with open(rttmf, 'w') as fh:
         for start_frame, end_frame, label in idx_list:
             onset = start_frame / 100.
@@ -137,17 +138,17 @@ def match_DER(string):
 def main():
     parser = argparse.ArgumentParser(description='VB Resegmentation')
     parser.add_argument(
-        'data_dir', type=str, help='Subset data directory')
+        'data_dir', type=Path, help='Subset data directory')
     parser.add_argument(
-        'init_rttm_filename', type=str,
+        'init_rttm_filename', type=Path,
         help='The RTMM file to initialize the VB system from; usually the result '
              'from the AHC step')
     parser.add_argument(
-        'output_dir', type=str, help='Output directory')
+        'output_dir', type=Path, help='Output directory')
     parser.add_argument(
-        'dubm_model', type=str, help='Path to the diagonal UBM model')
+        'dubm_model', type=Path, help='Path to the diagonal UBM model')
     parser.add_argument(
-        'ie_model', type=str, help='Path to the ivector extractor model')
+        'ie_model', type=Path, help='Path to the ivector extractor model')
     parser.add_argument(
         '--max-speakers', metavar='SPEAKERS', type=int, default=10,
         help='Set the maximum of speakers for an utterance (default: %(default)s)')
@@ -211,11 +212,11 @@ def main():
     np.random.seed(args.seed)
     
     # The data directory should contain wav.scp, spk2utt, utt2spk and feats.scp
-    utt2spk_filename = f"{args.data_dir}/utt2spk"
-    utt2num_frames_filename = f"{args.data_dir}/utt2num_frames"
-    feats_scp_filename = f"{args.data_dir}/feats.scp"
-    temp_dir = f"{args.output_dir}/tmp"
-    rttm_dir = f"{args.output_dir}/rttm"
+    utt2spk_filename = Path(args.data_dir, "utt2spk")
+    utt2num_frames_filename = Path(args.data_dir, "utt2num_frames")
+    feats_scp_filename = Path(args.data_dir, "feats.scp")
+    temp_dir = Path(args.output_dir, "tmp")
+    rttm_dir = Path(args.output_dir, "rttm")
 
     utt_list = get_utt_list(utt2spk_filename)
     utt2num_frames = utt_num_frames_mapping(utt2num_frames_filename)
@@ -255,7 +256,7 @@ def main():
     # Load the MFCC features
     feats_dict = {}
 
-    for key,mat in kaldi_io.read_mat_scp(feats_scp_filename):
+    for key,mat in kaldi_io.read_mat_scp(str(feats_scp_filename)):
         feats_dict[key] = mat
 
     for utt in utt_list:
