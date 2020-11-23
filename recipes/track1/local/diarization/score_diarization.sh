@@ -76,7 +76,7 @@ full_der=$(grep OVERALL $tmpdir/metrics_full.stdout | awk '{print $4}')
 full_jer=$(grep OVERALL $tmpdir/metrics_full.stdout | awk '{print $5}')
 echo "$0: ******* SCORING RESULTS *******"
 echo "$0: *** DER (full): ${full_der}"
-echo "$0: *** JER (full): ${core_jer}"
+echo "$0: *** JER (full): ${full_jer}"
 echo "$0: *** DER (core): ${core_der}"
 echo "$0: *** JER (core): ${core_jer}"
 if [ ! -z "scores_dir" ]; then
