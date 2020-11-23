@@ -67,7 +67,7 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
                 break
             else:
                 if ref[i] == 0:
-                    ref[i] = speaker_dict[spkname] 
+                    ref[i] = speaker_dict[spkname]
                 else:
                     ref[i] = 1 # The overlapping speech is marked as 1.
     ref = ref.astype(int)
@@ -122,55 +122,83 @@ def match_DER(string):
 
 def main():
     parser = argparse.ArgumentParser(description='VB Resegmentation')
-    parser.add_argument('data_dir', type=str, help='Subset data directory')
-    parser.add_argument('init_rttm_filename', type=str, 
-                        help='The rttm file to initialize the VB system, usually the AHC cluster result')
-    parser.add_argument('output_dir', type=str, help='Output directory')
-    parser.add_argument('dubm_model', type=str, help='Path of the diagonal UBM model')
-    parser.add_argument('ie_model', type=str, help='Path of the ivector extractor model')
-    parser.add_argument('--max_speakers', type=int, default=10,
-                        help='Maximum number of speakers expected in the utterance (default: 10)')
-    parser.add_argument('--max-iters', type=int, default=10,
-                        help='Maximum number of algorithm iterations (default: 10)')
-    parser.add_argument('--downsample', type=int, default=25,
-                        help='Perform diarization on input downsampled by this factor (default: 25)')
-    parser.add_argument('--alphaQInit', type=float, default=100.0,
-                        help='Dirichlet concentraion parameter for initializing q')
-    parser.add_argument('--sparsityThr', type=float, default=0.001,
-                        help='Set occupations smaller that this threshold to 0.0 (saves memory as \
-                        the posteriors are represented by sparse matrix)')
-    parser.add_argument('--epsilon', type=float, default=1e-6,
-                        help='Stop iterating, if obj. fun. improvement is less than epsilon')
-    parser.add_argument('--minDur', type=int, default=1,
-                        help='Minimum number of frames between speaker turns imposed by linear \
-                        chains of HMM states corresponding to each speaker. All the states \
-                        in a chain share the same output distribution')
-    parser.add_argument('--loopProb', type=float, default=0.9,
-                        help='Probability of not switching speakers between frames')
-    parser.add_argument('--statScale', type=float, default=0.2,
-                        help='Scale sufficient statiscits collected using UBM')
-    parser.add_argument('--llScale', type=float, default=1.0,
-                        help='Scale UBM likelihood (i.e. llScale < 1.0 make atribution of \
-                        frames to UBM componets more uncertain)')
-    parser.add_argument('--channel', type=int, default=0,
-                        help='Channel information in the rttm file')
-    parser.add_argument('--initialize', type=int, default=1,
-                        help='Whether to initalize the speaker posterior')
-
+    parser.add_argument(
+        'data_dir', type=str, help='Subset data directory')
+    parser.add_argument(
+        'init_rttm_filename', type=str,
+        help='The RTMM file to initialize the VB system from; usually the result '
+             'from the AHC step')
+    parser.add_argument(
+        'output_dir', type=str, help='Output directory')
+    parser.add_argument(
+        'dubm_model', type=str, help='Path to the diagonal UBM model')
+    parser.add_argument(
+        'ie_model', type=str, help='Path to the ivector extractor model')
+    parser.add_argument(
+        '--max-speakers', metavar='SPEAKERS', type=int, default=10,
+        help='Set the maximum of speakers for an utterance (default: %(default)s)')
+    parser.add_argument(
+        '--max-iters', metavar='ITER', type=int, default=10,
+        help='Set maximum number of algorithm iterations (default: %(default)s)')
+    parser.add_argument(
+        '--downsample', metavar='FACTOR', type=int, default=25,
+        help='Downsample input by FACTOR before applying VB-HMM '
+             '(default: %(default)s)')
+    parser.add_argument(
+        '--alphaQInit', metavar='ALPHA', type=float, default=100.0,
+        help='Initialize Q from Dirichlet distribution with concentration '
+             'parameter ALPHA (default: %(default)s)')
+    parser.add_argument(
+        '--sparsityThr', metavar='SPARSITY', type=float, default=0.001,
+        help='Set occupations smaller than SPARSITY to 0.0; saves memory as'
+             'the posteriors are represented by sparse matrix '
+             '(default: %(default)s)')
+    parser.add_argument(
+        '--epsilon', metavar='EPS', type=float, default=1e-6,
+        help='Stop iterating if objective function improvement is <EPS '
+             '(default: %(default)s)')
+    parser.add_argument(
+        '--minDur', metavar='FRAMES', type=int, default=1,
+        help='Minimum number of frames between speaker turns. This constraint '
+             'is imposed via linear chains of HMM states corresponding to each '
+             'speaker. All the states in a chain share the same output '
+             'distribution (default: %(default)s')
+    parser.add_argument(
+        '--loopProb', metavar='PROB', type=float, default=0.9,
+        help='Probability of not switching speakers between frames '
+             '(default: %(default)s)')
+    parser.add_argument(
+        '--statScale', metavar='FACTOR', type=float, default=0.2,
+        help='Scaling factor for sufficient statistics collected using UBM '
+             '(default: %(default)s)')
+    parser.add_argument(
+        '--llScale', metavar='FACTOR', type=float, default=1.0,
+        help='Scaling factor for UBM likelihood; values <1.0 make atribution of '
+             'frames to UBM componets more uncertain (default: %(default)s)')
+    parser.add_argument(
+        '--channel', metavar='CHANNEL', type=int, default=0,
+        help='In output RTTM files, set channel field to CHANNEL '
+             '(default: %(default)s)')
+    parser.add_argument(
+        '--initialize', default=False, action='store_true',
+        help='Initialize speaker posteriors from RTTM')
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
     args = parser.parse_args()
     print(args)
     data_dir = args.data_dir
     init_rttm_filename = args.init_rttm_filename
 
     # The data directory should contain wav.scp, spk2utt, utt2spk and feats.scp
-    utt2spk_filename = "{}/utt2spk".format(data_dir) 
-    utt2num_frames_filename = "{}/utt2num_frames".format(data_dir) 
+    utt2spk_filename = "{}/utt2spk".format(data_dir)
+    utt2num_frames_filename = "{}/utt2num_frames".format(data_dir)
     feats_scp_filename = "{}/feats.scp".format(data_dir)
     temp_dir = "{}/tmp".format(args.output_dir)
     rttm_dir = "{}/rttm".format(args.output_dir)
 
     utt_list = get_utt_list(utt2spk_filename)
-    utt2num_frames = utt_num_frames_mapping(utt2num_frames_filename) 
+    utt2num_frames = utt_num_frames_mapping(utt2num_frames_filename)
     print("------------------------------------------------------------------------")
     print("")
     sys.stdout.flush()
@@ -198,7 +226,7 @@ def main():
 
     for key in ie_para.keys():
         if key == "M":
-            IE_M = np.transpose(ie_para[key], (2, 0, 1)) 
+            IE_M = np.transpose(ie_para[key], (2, 0, 1))
     m = DUBM_MEANS_INVVARS / DUBM_INV_VARS
     iE = DUBM_INV_VARS
     w = DUBM_WEIGHTS
@@ -221,7 +249,7 @@ def main():
         X = feats_dict[utt]
         X = X.astype(np.float64)
 
-        # Keep only the voiced frames (0 denotes the silence 
+        # Keep only the voiced frames (0 denotes the silence
         # frames, 1 denotes the overlapping speech frames). Since
         # our method predicts single speaker label for each frame
         # the init_ref doesn't contain 1.
