@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-from pdb import set_trace as bp
 import pickle
 import sys
 
@@ -112,10 +111,7 @@ def create_rttm_output(uttname, predicted_label, output_dir, channel):
         idx_list.append([start_idx, num_frames, last_label])
 
     with open("{}/{}_predict.rttm".format(output_dir, uttname), 'w') as fh:
-        for i in range(len(idx_list)):
-            start_frame = (idx_list[i])[0]
-            end_frame = (idx_list[i])[1]
-            label = (idx_list[i])[2]
+        for start_frame, end_frame, label in idx_list:
             duration = end_frame - start_frame
             fh.write("SPEAKER {} {} {:.2f} {:.2f} <NA> <NA> {} <NA> <NA>\n".format(
                 uttname, channel, start_frame / 100.0, duration / 100.0, label))
