@@ -1,13 +1,15 @@
 #!/usr/bin/env python
-
-import numpy as np
-import VB_diarization_v2 as VB_diarization
-import pickle
-import kaldi_io
-import sys
 import argparse
 from pdb import set_trace as bp
-#import commands
+import pickle
+import sys
+
+import kaldi_io
+import numpy as np
+
+import VB_diarization_v2 as VB_diarization
+
+
 
 def get_utt_list(utt2spk_filename):
     utt_list = []
@@ -20,6 +22,7 @@ def get_utt_list(utt2spk_filename):
     print("{} UTTERANCES IN TOTAL".format(len(utt_list)))
     return utt_list
 
+
 def utt_num_frames_mapping(utt2num_frames_filename):
     utt2num_frames = {}
     with open(utt2num_frames_filename, 'r') as fh:
@@ -29,6 +32,7 @@ def utt_num_frames_mapping(utt2num_frames_filename):
         line_split = line.split()
         utt2num_frames[line_split[0]] = int(line_split[1])
     return utt2num_frames
+
 
 def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_filename):
     utt_rttm_file = open("{}/{}".format(temp_dir, rttm_filename), 'w')
@@ -73,7 +77,9 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
     ref = ref.astype(int)
 
     print("{} SPEAKERS IN {}".format(num_spk, uttname))
-    print("{} TOTAL, {} SILENCE({:.0f}%), {} OVERLAPPING({:.0f}%)".format(len(ref), np.sum(ref == 0), 100.0 * np.sum(ref == 0) / len(ref), np.sum(ref == 1), 100.0 * np.sum(ref == 1) / len(ref)))
+    print("{} TOTAL, {} SILENCE({:.0f}%), {} OVERLAPPING({:.0f}%)".format(
+        len(ref), np.sum(ref == 0), 100.0 * np.sum(ref == 0) / len(ref),
+        np.sum(ref == 1), 100.0 * np.sum(ref == 1) / len(ref)))
 
     duration_list = []
     for i in range(num_spk):
@@ -85,6 +91,7 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, temp_dir, rttm_
     sys.stdout.flush()
     utt_rttm_file.close()
     return ref
+
 
 def create_rttm_output(uttname, predicted_label, output_dir, channel):
     num_frames = len(predicted_label)
@@ -110,7 +117,8 @@ def create_rttm_output(uttname, predicted_label, output_dir, channel):
             end_frame = (idx_list[i])[1]
             label = (idx_list[i])[2]
             duration = end_frame - start_frame
-            fh.write("SPEAKER {} {} {:.2f} {:.2f} <NA> <NA> {} <NA> <NA>\n".format(uttname, channel, start_frame / 100.0, duration / 100.0, label))
+            fh.write("SPEAKER {} {} {:.2f} {:.2f} <NA> <NA> {} <NA> <NA>\n".format(
+                uttname, channel, start_frame / 100.0, duration / 100.0, label))
     return 0
 
 def match_DER(string):
@@ -243,9 +251,11 @@ def main():
         # In init_ref, 0 denotes the silence silence frames
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
-        init_ref = create_ref_file(utt, utt2num_frames, init_rttm_filename, temp_dir, "{}.rttm".format(utt))
-        # Ground truth of the diarization.
+        init_ref = create_ref_file(
+            utt, utt2num_frames, init_rttm_filename, temp_dir,
+            "{}.rttm".format(utt))
 
+        # Ground truth of the diarization.
         X = feats_dict[utt]
         X = X.astype(np.float64)
 
@@ -271,16 +281,20 @@ def main():
 
         # VB resegmentation
 
-        # q  - S x T matrix of posteriors attribution each frame to one of S possible
-        #      speakers, where S is given by opts.maxSpeakers
-        # sp - S dimensional column vector of ML learned speaker priors. Ideally, these
-        #      should allow to estimate # of speaker in the utterance as the
+        # q  - S x T matrix of posteriors attribution each frame to one of S
+        #      possible speakers, where S is given by opts.maxSpeakers
+        # sp - S dimensional column vector of ML learned speaker priors. Ideally,
+        #      these should allow to estimate # of speaker in the utterance as the
         #      probabilities of the redundant speaker should converge to zero.
-        # Li - values of auxiliary function (and DER and frame cross-entropy between q
-        #      and reference if 'ref' is provided) over iterations.
-        q_out, sp_out, L_out = VB_diarization.VB_diarization(X_voiced,utt, m, iE, w, V, sp=None, q=q, maxSpeakers=args.max_speakers, maxIters=args.max_iters, VtiEV=None,
-                                  downsample=args.downsample, alphaQInit=args.alphaQInit, sparsityThr=args.sparsityThr, epsilon=args.epsilon, minDur=args.minDur,
-                                  loopProb=args.loopProb, statScale=args.statScale, llScale=args.llScale, ref=None, plot=False)
+        # Li - values of auxiliary function (and DER and frame cross-entropy
+        #      between q and reference if 'ref' is provided) over iterations.
+        q_out, sp_out, L_out = VB_diarization.VB_diarization(
+            X_voiced,utt, m, iE, w, V, sp=None, q=q,
+            maxSpeakers=args.max_speakers, maxIters=args.max_iters, VtiEV=None,
+            downsample=args.downsample, alphaQInit=args.alphaQInit,
+            sparsityThr=args.sparsityThr, epsilon=args.epsilon,
+            minDur=args.minDur, loopProb=args.loopProb, statScale=args.statScale,
+            llScale=args.llScale, ref=None, plot=False)
 
         predicted_label_voiced = np.argmax(q_out, 1) + 2
         predicted_label = (np.zeros(len(mask))).astype(int)
@@ -307,6 +321,7 @@ def main():
         print("")
         sys.stdout.flush()
     return 0
+
 
 if __name__ == "__main__":
     main()
