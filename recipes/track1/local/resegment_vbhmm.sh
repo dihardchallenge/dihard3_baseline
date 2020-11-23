@@ -88,12 +88,12 @@ fi
 ###############################################################################
 if [ $stage -le 2 ]; then
   echo "$0: Performing VH-HMM resegmentation..."
-#  local/diarization/VB_resegmentation.sh \
-#    --nj $nj --cmd "$train_cmd" \
-#    --initialize 1 --max_iters $max_iters \
-#    --statScale $statscale --loopProb $loop \
-#    --channel 1 \
-#    $whole_data_dir $init_rttm $out_dir $dubm_model $ie_model
+  local/diarization/VB_resegmentation.sh \
+    --nj $nj --cmd "$train_cmd" \
+    --initialize 1 --max_iters $max_iters \
+    --statScale $statscale --loopProb $loop \
+    --channel 1 \
+    $whole_data_dir $init_rttm $out_dir $dubm_model $ie_model
   cat $out_dir/rttm/*.rttm | sort > $out_dir/rttm.tmp
   rm -fr $out_dir/rttm
   mv $out_dir/rttm.tmp $out_dir/rttm
