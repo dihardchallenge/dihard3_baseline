@@ -196,18 +196,24 @@ def main():
     parser.add_argument(
         '--initialize', default=False, action='store_true',
         help='Initialize speaker posteriors from RTTM')
+    parser.add_argument(
+        '--seed', metavar='SEED', type=int, default=1036527419,
+        help='seed for RNG (default: %(default)s)')
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
     args = parser.parse_args()
-    print(args)
-    data_dir = args.data_dir
-    init_rttm_filename = args.init_rttm_filename
 
+    # Might as well log the paramater values.
+    print(args)
+
+    # Set NumPy RNG to ensure reproducibility.
+    np.random.seed(args.seed)
+    
     # The data directory should contain wav.scp, spk2utt, utt2spk and feats.scp
-    utt2spk_filename = f"{data_dir}/utt2spk"
-    utt2num_frames_filename = f"{data_dir}/utt2num_frames"
-    feats_scp_filename = f"{data_dir}/feats.scp"
+    utt2spk_filename = f"{args.data_dir}/utt2spk"
+    utt2num_frames_filename = f"{args.data_dir}/utt2num_frames"
+    feats_scp_filename = f"{args.data_dir}/feats.scp"
     temp_dir = f"{args.output_dir}/tmp"
     rttm_dir = f"{args.output_dir}/rttm"
 
@@ -258,7 +264,7 @@ def main():
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
         init_ref = create_ref_file(
-            utt, utt2num_frames, init_rttm_filename, temp_dir,
+            utt, utt2num_frames, args.init_rttm_filename, temp_dir,
             f"{utt}.rttm")
 
         # Ground truth of the diarization.
