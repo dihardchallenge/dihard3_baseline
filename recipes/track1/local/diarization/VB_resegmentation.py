@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+from collections import namedtuple
 from pathlib import Path
 import pickle
 import sys
@@ -34,7 +35,10 @@ def utt_num_frames_mapping(utt2num_frames_filename):
     return utt2num_frames
 
 
-def create_ref_file(uttname, utt2num_frames, full_rttm_filename):
+
+Segment = namedtuple('Segment', ['onset', 'offset', 'speaker_id'])
+
+def create_ref_file(uttname, utt2num_frames, full_rttm_filename, step=0.01):
     """Return frame-wise labeling for  based on the initial diarization.
 
     The resulting labeling is an an array whose ``i``-th entry provides the label
@@ -58,48 +62,80 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename):
     full_rttm_filename : Path
         Path to RTTM containing **ALL** segments for **ALL** recordings.
 
+    step : float, optional
+        Duration in seconds between onsets of frames.
+        (Default: 0.01)
+
     Returns
     -------
     ref : ndarray, (n_frames,)
         Framewise speaker labels.
     """
-    num_frames = utt2num_frames[uttname]
+    n_frames = utt2num_frames[uttname]
 
-    # We use 0 to denote silence frames and 1 to denote overlapping frames.
-    ref = np.zeros(num_frames)
+    # Load speech segments for target recording from RTTM.
+    segs = []
+    with open(full_rttm_filename, 'r') as f:
+        for line in f:
+            fields = line.strip().split()
+            if fields[1] != uttname:
+                # Skip segments from other recordings.
+                continue
+            onset = float(fields[3])
+            offset = onset + float(fields[4])
+            onset_frames = int(onset/step)
+            offset_frames = int(offset/step)
+            if offset_frames >= n_frames:
+                offset_frames = n_frames - 1
+                print(
+                    f"WARNING: Speaker turn extends past end of recording. "
+                    f"LINE: {line}")
+            speaker_id = fields[7]
+            if not 0 <= onset_frames <= offset_frames:
+                # Note that offset_frames was previously truncated to
+                # at most the actual length of the recording as we
+                # anticipate the initial diarization may be sloppy at
+                # the edges.
+                raise ValueError(
+                    f"Impossible segment boundaries. LINE: {line}")
+            segs.append(
+                Segment(onset_frames, offset_frames, speaker_id))
+
+    # Induce mapping from string speaker ids to integers > 1s.
+    n_speakers = 0
     speaker_dict = {}
-    num_spk = 0
-
-    with open(full_rttm_filename, 'r') as fh:
-        content = fh.readlines()
-    for line in content:
-        fields = line.strip().split()
-        uttname_line = fields[1]
-        if uttname != uttname_line:
+    for seg in segs:
+        if seg.speaker_id in speaker_dict:
             continue
-        start_time = int(float(fields[3]) * 100)
-        duration_time = int(float(fields[4]) * 100)
-        end_time = start_time + duration_time
-        spkname = fields[7]
-        if spkname not in speaker_dict.keys():
-            spk_idx = num_spk + 2
-            speaker_dict[spkname] = spk_idx
-            num_spk += 1
-
-        for i in range(start_time, end_time):
-            if i < 0:
-                raise ValueError(line)
-            elif i >= num_frames:
-                print(f"{line} EXCEED NUM_FRAMES")
-                break
+        n_speakers += 1
+        speaker_dict[seg.speaker_id] = n_speakers + 1
+    
+    # Create reference frame labeling:
+    # - 0: non-speech
+    # - 1: overlapping speech
+    # - n>1: speaker n
+    # We use 0 to denote silence frames and 1 to denote overlapping frames.
+    ref = np.zeros(n_frames, dtype=np.int32)
+    for seg in segs:
+        # Integer id of speaker.
+        speaker_label = speaker_dict[seg.speaker_id]
+        
+        # Assign this label to all frames in the segment that are not
+        # already assigned.
+        for ind in range(seg.onset, seg.offset+1):
+            if ref[ind] == speaker_label:
+                # This shouldn't happen, but being paranoid in case the
+                # initialization contains overlapping segments by same speaker.
+                continue
+            elif ref[ind] == 0:
+                label = speaker_label
             else:
-                if ref[i] == 0:
-                    ref[i] = speaker_dict[spkname]
-                else:
-                    ref[i] = 1 # The overlapping speech is marked as 1.
-    ref = ref.astype(int)
+                # Overlapped speech.
+                label = 1
+            ref[ind] = label
 
-    print(f"{num_spk} SPEAKERS IN {uttname}")
+    # Diagnostics.
+    print(f"{n_speakers} SPEAKERS IN {uttname}")
     n_ref_frames = len(ref)
     n_sil_frames = np.sum(ref == 0)
     sil_prop = 100.* n_sil_frames / n_ref_frames
@@ -107,14 +143,12 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename):
     overlap_prop = 100.* n_overlap_frames / n_ref_frames
     print(f"{n_ref_frames} TOTAL, {n_sil_frames} SILENCE({sil_prop:.0f}%), "
           f"{n_overlap_frames} OVERLAPPING({overlap_prop:.0f}%)")
-
-    duration_list = []
-    for i in range(num_spk):
-        duration_list.append(1.0 * np.sum(ref == (i + 2)) / len(ref))
-    duration_list.sort()
-    duration_list = map(lambda x: '{0:.2f}'.format(x), duration_list)
-    dur_dist = " ".join(duration_list)
-    print(f"DISTRIBUTION OF SPEAKER {dur_dist}")
+    speaker_hist = np.bincount(ref)[2:]
+    print(np.unique(ref))
+    print(speaker_hist)
+    speaker_dist = speaker_hist/speaker_hist.sum()
+    print(f"SPEAKER FREQUENCIES (DISCOUNTING OVERLAPS) "
+          f"{np.array2string(speaker_dist, precision=2)}")
     print("")
 
     return ref
@@ -212,6 +246,9 @@ def main():
         help='Scaling factor for UBM likelihood; values <1.0 make atribution of '
              'frames to UBM componets more uncertain (default: %(default)s)')
     parser.add_argument(
+        '--step', metavar='SECONDS', type=float, default=0.01,
+        help='Duration in seconds between frame onsets (default: %(default)s)')
+    parser.add_argument(
         '--channel', metavar='CHANNEL', type=int, default=0,
         help='In output RTTM files, set channel field to CHANNEL '
              '(default: %(default)s)')
@@ -285,7 +322,7 @@ def main():
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
         init_ref = create_ref_file(
-            utt, utt2num_frames, args.init_rttm_filename)
+            utt, utt2num_frames, args.init_rttm_filename, args.step)
 
         # Ground truth of the diarization.
         X = feats_dict[utt]
