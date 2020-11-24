@@ -12,27 +12,32 @@ import VB_diarization_v2 as VB_diarization
 
 
 
-def get_utt_list(utt2spk_filename):
-    utt_list = []
-    with open(utt2spk_filename, 'r') as fh:
-        content = fh.readlines()
-    for line in content:
-        line = line.strip('\n')
-        line_split = line.split()
-        utt_list.append(line_split[0])
-    print(f"{len(utt_list)} UTTERANCES IN TOTAL")
-    return utt_list
+def load_uris(fpath):
+    """Return URIs from first column of ``fpath``."""
+    uris = []
+    with open(fpath, 'r') as f:
+        for line in f:
+            uri, _ = line.split(maxsplit=1)
+            uris.append(uri)
+    return uris
 
 
-def utt_num_frames_mapping(utt2num_frames_filename):
-    utt2num_frames = {}
-    with open(utt2num_frames_filename, 'r') as fh:
-        content = fh.readlines()
-    for line in content:
-        line = line.strip('\n')
-        line_split = line.split()
-        utt2num_frames[line_split[0]] = int(line_split[1])
-    return utt2num_frames
+def load_frame_counts(fpath):
+    """Load mapping from URIs to frame counts from ``fpath``.
+
+    The file is expected to be in the format of a Kaldi ``utt2num_frames`` file;
+    that is, two space-delimited columns:
+
+    - URI
+    - frame count
+    """
+    frame_counts = {}
+    with open(fpath, 'r') as f:
+        for line in f:
+            uri, n_frames = line.strip().split()
+            n_frames = int(n_frames)
+            frame_counts[uri] = n_frames
+    return frame_counts
 
 
 
@@ -152,7 +157,7 @@ def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
     return ref
 
 
-def create_rttm_output(uttname, predicted_label, output_dir, channel):
+def create_rttm_output(recording_id, predicted_label, output_dir, channel):
     num_frames = len(predicted_label)
 
     start_idx = 0
@@ -170,12 +175,12 @@ def create_rttm_output(uttname, predicted_label, output_dir, channel):
     if last_label != 0:
         idx_list.append([start_idx, num_frames, last_label])
 
-    rttmf = Path(output_dir, f"{uttname}_predict.rttm")
+    rttmf = Path(output_dir, f"{recording_id}_predict.rttm")
     with open(rttmf, 'w') as fh:
         for start_frame, end_frame, label in idx_list:
             onset = start_frame / 100.
             duration = (end_frame - start_frame) / 100.
-            line = (f'SPEAKER {uttname} {channel} {onset:.2f} {duration:.2f} <NA> <NA> {label} <NA> <NA>\n')
+            line = (f'SPEAKER {recording_id} {channel} {onset:.2f} {duration:.2f} <NA> <NA> {label} <NA> <NA>\n')
             fh.write(line)
     return 0
 
@@ -204,7 +209,7 @@ def main():
         'ie_model', type=Path, help='Path to the ivector extractor model')
     parser.add_argument(
         '--max-speakers', metavar='SPEAKERS', type=int, default=10,
-        help='Set the maximum of speakers for an utterance (default: %(default)s)')
+        help='Set the maximum of speakers for a recording (default: %(default)s)')
     parser.add_argument(
         '--max-iters', metavar='ITER', type=int, default=10,
         help='Set maximum number of algorithm iterations (default: %(default)s)')
@@ -273,8 +278,9 @@ def main():
     feats_scp_filename = Path(args.data_dir, "feats.scp")
     rttm_dir = Path(args.output_dir, "rttm")
 
-    utt_list = get_utt_list(utt2spk_filename)
-    utt2num_frames = utt_num_frames_mapping(utt2num_frames_filename)
+    # utt_list
+    recording_ids = load_uris(utt2spk_filename)
+    frame_counts = load_frame_counts(utt2num_frames_filename)
     print("------------------------------------------------------------------------")
     print("")
     sys.stdout.flush()
@@ -314,16 +320,16 @@ def main():
     for key,mat in kaldi_io.read_mat_scp(str(feats_scp_filename)):
         feats_dict[key] = mat
 
-    for utt in utt_list:
+    for recording_id in recording_ids:
         # Get the alignments from the clustering result.
         # In init_ref, 0 denotes the silence silence frames
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
         init_ref = create_ref_file(
-            utt, utt2num_frames, args.init_rttm_filename, args.step)
+            recording_id, frame_counts, args.init_rttm_filename, args.step)
 
         # Ground truth of the diarization.
-        X = feats_dict[utt]
+        X = feats_dict[recording_id]
         X = X.astype(np.float64)
 
         # Keep only the voiced frames (0 denotes the silence
@@ -336,7 +342,8 @@ def main():
 
         if X_voiced.shape[0] == 0:
             print(
-                f"Warning: {utt} has no voiced frames in the initialization file")
+                f"Warning: {recording_id} has no voiced frames in the "
+                f"initialization file")
             continue
 
         # Initialize the posterior of each speaker based on the clustering result.
@@ -352,12 +359,12 @@ def main():
         # q  - S x T matrix of posteriors attribution each frame to one of S
         #      possible speakers, where S is given by opts.maxSpeakers
         # sp - S dimensional column vector of ML learned speaker priors. Ideally,
-        #      these should allow to estimate # of speaker in the utterance as the
+        #      these should allow to estimate # of speaker in the recording as the
         #      probabilities of the redundant speaker should converge to zero.
         # Li - values of auxiliary function (and DER and frame cross-entropy
         #      between q and reference if 'ref' is provided) over iterations.
         q_out, sp_out, L_out = VB_diarization.VB_diarization(
-            X_voiced,utt, m, iE, w, V, sp=None, q=q,
+            X_voiced, recording_id, m, iE, w, V, sp=None, q=q,
             maxSpeakers=args.max_speakers, maxIters=args.max_iters, VtiEV=None,
             downsample=args.downsample, alphaQInit=args.alphaQInit,
             sparsityThr=args.sparsityThr, epsilon=args.epsilon,
@@ -385,7 +392,7 @@ def main():
         print("L_out", L_out)
 
         # Create the output rttm file and compute the DER after re-segmentation
-        create_rttm_output(utt, predicted_label, rttm_dir, args.channel)
+        create_rttm_output(recording_id, predicted_label, rttm_dir, args.channel)
         print("")
         print("------------------------------------------------------------------------")
         print("")
