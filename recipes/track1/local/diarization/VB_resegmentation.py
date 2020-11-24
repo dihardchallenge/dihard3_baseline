@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
-from collections import namedtuple
+from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 import pickle
 import sys
@@ -70,11 +71,99 @@ def load_frame_counts(fpath):
     return frame_counts
 
 
+@dataclass
+class Segment:
+    """Speech segment.
 
-Segment = namedtuple('Segment', ['onset', 'offset', 'speaker_id'])
+    Parameters
+    ----------
+    recording_id : str
+        URI for recording segment is from.
 
-def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
-    """Return frame-wise labeling for  based on the initial diarization.
+    onset : int
+        Index in frames of segment onset (0-indexed).
+
+    offset : int
+        Index in frames of segment offset (0-indexed).
+
+    speaker_id : str
+        Speaker id.
+    """
+    recording_id: str
+    onset: int
+    offset: int
+    speaker_id: str
+
+    @property
+    def duration(self):
+        """Duration in frames of segment."""
+        return self.offset - self.onset + 1
+
+
+def load_rttm(rttm_path, frame_counts, step=0.01, target_rec_ids=None):
+    """Load recording segmentations from RTTM file.
+
+    Parameters
+    ----------
+    rttm_path : Path
+        Path to RTTM file.
+
+    frame_counts : dict
+        Mapping from recording ids to lengths in frames.
+
+    step : float, optional
+        Duration in seconds between onsets of frames.
+        (Default: 0.01)
+
+    target_rec_ids : iterable of str, optional
+        Filter segments from recordings whose recording ids are not in
+        ``target_rec_ids``.
+        (Default: None)
+
+    Returns
+    -------
+    recordings : dict
+        Mapping from recording ids to speech segments.
+    """
+    recordings = defaultdict(list)
+    with open(rttm_path, 'r') as f:
+        for line in f:
+            fields = line.strip().split()
+            recording_id = fields[1]
+
+            # Skip segments from non-target recordings.
+            if target_rec_ids and recording_id not in target_rec_ids:
+                continue
+
+            # Check sane segment boundaries.
+            onset = float(fields[3])
+            offset = onset + float(fields[4])
+            onset_frames = int(onset/step)
+            offset_frames = int(offset/step)
+            n_frames = frame_counts[recording_id]
+            if offset_frames >= n_frames:
+                offset_frames = n_frames - 1
+                print(
+                    f"WARNING: Speaker turn extends past end of recording. "
+                    f"LINE: {line}")
+            if not 0 <= onset_frames <= offset_frames:
+                # Note that offset_frames was previously truncated to
+                # at most the actual length of the recording as we
+                # anticipate the initial diarization may be sloppy at
+                # the edges.
+                raise ValueError(
+                    f"Impossible segment boundaries. LINE: {line}")
+
+            # Create new speech segment.
+            speaker_id = fields[7]
+            recordings[recording_id].append(
+                Segment(recording_id, onset_frames, offset_frames, speaker_id))
+
+    return recordings
+
+
+def get_labels(segs, n_frames, recording_id):
+    """Return frame-wise labeling corresponding to a segmentation.
 
     The resulting labeling is an an array whose ``i``-th entry provides the label
     for frame ``i``, which can be one of the following integer values:
@@ -88,54 +177,20 @@ def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
 
     Parameters
     ----------
+    segs : iterable of Segment
+        Recording segments.
+
+    n_frames : int
+        Length of recording in frames.
+
     recording_id : str
-        URI of recording to extract labeling for.
-
-    rec2num_frames : dict
-        Mapping from recording URIs to lengths in frames.
-
-    full_rttm_filename : Path
-        Path to RTTM containing **ALL** segments for **ALL** recordings.
-
-    step : float, optional
-        Duration in seconds between onsets of frames.
-        (Default: 0.01)
+        Recording id. Used only for logging.
 
     Returns
     -------
     ref : ndarray, (n_frames,)
         Framewise speaker labels.
     """
-    n_frames = rec2num_frames[recording_id]
-
-    # Load speech segments for target recording from RTTM.
-    segs = []
-    with open(full_rttm_path, 'r') as f:
-        for line in f:
-            fields = line.strip().split()
-            if fields[1] != recording_id:
-                # Skip segments from other recordings.
-                continue
-            onset = float(fields[3])
-            offset = onset + float(fields[4])
-            onset_frames = int(onset/step)
-            offset_frames = int(offset/step)
-            if offset_frames >= n_frames:
-                offset_frames = n_frames - 1
-                print(
-                    f"WARNING: Speaker turn extends past end of recording. "
-                    f"LINE: {line}")
-            speaker_id = fields[7]
-            if not 0 <= onset_frames <= offset_frames:
-                # Note that offset_frames was previously truncated to
-                # at most the actual length of the recording as we
-                # anticipate the initial diarization may be sloppy at
-                # the edges.
-                raise ValueError(
-                    f"Impossible segment boundaries. LINE: {line}")
-            segs.append(
-                Segment(onset_frames, offset_frames, speaker_id))
-
     # Induce mapping from string speaker ids to integers > 1s.
     n_speakers = 0
     speaker_dict = {}
@@ -312,18 +367,6 @@ def main():
     # Set NumPy RNG to ensure reproducibility.
     np.random.seed(args.seed)
 
-    # Paths to files in the data directory that we will be referring to:
-    # - feats.scp  --  script file mapping recording ids to features spanning
-    #   them
-    # - utt2num_frames  --  mapping from recording ids to frame counts of
-    #   corresponding features.
-    utt2num_frames_filename = Path(args.data_dir, "utt2num_frames")
-    feats_scp_filename = Path(args.data_dir, "feats.scp")
-
-    # utt_list
-    frame_counts = load_frame_counts(utt2num_frames_filename)
-    recording_ids = sorted(frame_counts.keys())
-
     print("------------------------------------------------------------------------")
     print("")
     sys.stdout.flush()
@@ -334,48 +377,57 @@ def main():
 
     # Load the MFCC features
     feats_dict = {}
-
-    for key,mat in kaldi_io.read_mat_scp(str(feats_scp_filename)):
+    feats_scp_path = Path(args.data_dir, "feats.scp")
+    for key,mat in kaldi_io.read_mat_scp(str(feats_scp_path)):
         feats_dict[key] = mat
 
+    # Load segments for target recordings.
+    frame_counts = load_frame_counts(
+        Path(args.data_dir, "utt2num_frames"))
+    recording_ids = sorted(frame_counts.keys())
+    recordings = load_rttm(
+        args.init_rttm_filename, frame_counts, step=args.step,
+        target_rec_ids=recording_ids)
+
+    # Resegment the recordings serially.
     for recording_id in recording_ids:
-        # Get the alignments from the clustering result.
-        # In init_ref, 0 denotes the silence silence frames
-        # 1 denotes the overlapping speech frames, the speaker
-        # label starts from 2.
-        init_ref = create_ref_file(
-            recording_id, frame_counts, args.init_rttm_filename, args.step)
+        # Convert the initial segmentation (e.g., from AHC) into an array of
+        # frame-level integer labels, where:
+        # - 0: non-speech
+        # - 1: overlapping speech
+        # - n>1: speaker n
+        # We use 0 to denote silence frames and 1 to denote overlapping frames.
+        init_labels = get_labels(
+            recordings[recording_id], frame_counts[recording_id], recording_id)
 
-        # Ground truth of the diarization.
-        X = feats_dict[recording_id]
-        X = X.astype(np.float64)
+        # Grab the corresponding features.
+        X = feats_dict[recording_id].astype(np.float64)
 
-        # Keep only the voiced frames (0 denotes the silence
-        # frames, 1 denotes the overlapping speech frames). Since
-        # our method predicts single speaker label for each frame
-        # the init_ref doesn't contain 1.
-        mask = (init_ref >= 2)
+        # Drop frames corresponding to silence and overlapped speech.
+        mask = (init_labels >= 2)
         X_voiced = X[mask]
-        init_ref_voiced = init_ref[mask] - 2
-
-        if X_voiced.shape[0] == 0:
+        init_labels_voiced = init_labels[mask]
+        init_labels_voiced -= 2  # So the labeling starts at 0.
+        if len(init_labels) == 0:
             print(
-                f"Warning: {recording_id} has no voiced frames in the "
-                f"initialization file")
+                f"Warning: the initial segmentation for {recording_id} has no "
+                f"non-overlapping speech.")
             continue
 
-        # Initialize the posterior of each speaker based on the clustering result.
+        # Initialize the posterior of each speaker based on the initial
+        # segmentation.
         if args.initialize:
-            # args.max_speakers=np.unique(init_ref_voiced)
-            q = VB_diarization.frame_labels2posterior_mx(init_ref_voiced, args.max_speakers)
+            q = VB_diarization.frame_labels2posterior_mx(
+                init_labels_voiced, args.max_speakers)
         else:
             q = None
             print("RANDOM INITIALIZATION\n")
 
-        # VB resegmentation
-
-        # q  - S x T matrix of posteriors attribution each frame to one of S
-        #      possible speakers, where S is given by opts.maxSpeakers
+        # Perform VB resegmentation of the NON-OVERLAPPED speech.
+        #
+        # q  - S x T matrix of speaker posteriors whose i-th row is the
+        #      attribution of frame i to the S possible speakers
+        #      (args.max_speakers). T is the total number of frames.
         # sp - S dimensional column vector of ML learned speaker priors. Ideally,
         #      these should allow to estimate # of speaker in the recording as the
         #      probabilities of the redundant speaker should converge to zero.
@@ -389,17 +441,18 @@ def main():
             minDur=args.minDur, loopProb=args.loopProb, statScale=args.statScale,
             llScale=args.llScale, ref=None, plot=False)
 
-        predicted_label_voiced = np.argmax(q_out, 1) + 2
-        predicted_label = (np.zeros(len(mask))).astype(int)
-        predicted_label[mask] = predicted_label_voiced
+        # 
+        predicted_labels_voiced = np.argmax(q_out, 1) + 2
+        predicted_labels = (np.zeros(len(mask))).astype(int)
+        predicted_labels[mask] = predicted_labels_voiced
 
         duration_list = []
         for i in range(args.max_speakers):
-            num_frames = np.sum(predicted_label == (i + 2))
+            num_frames = np.sum(predicted_labels == (i + 2))
             if num_frames == 0:
                 continue
             else:
-                duration_list.append(1.0 * num_frames / len(predicted_label))
+                duration_list.append(1.0 * num_frames / len(predicted_labels))
         duration_list.sort()
         duration_list = list(map(lambda x: '{0:.2f}'.format(x), duration_list))
         n_speakers = len(duration_list)
@@ -412,7 +465,7 @@ def main():
         # Create the output rttm file and compute the DER after re-segmentation.
         write_rttm_file(
             Path(args.output_dir, "per_file_rttm", recording_id + '.rttm'),
-            predicted_label, channel=args.channel, step=args.step, precision=2)
+            predicted_labels, channel=args.channel, step=args.step, precision=2)
         print("")
         print("------------------------------------------------------------------------")
         print("")
