@@ -11,6 +11,47 @@ import numpy as np
 import VB_diarization_v2 as VB_diarization
 
 
+def load_dubm(fpath):
+    """Load diagonal UBM parameters.
+
+    Parameters
+    ----------
+    fpath : Path
+        Path to pickled UBM model.
+
+    Returns
+    -------
+    m
+    iE
+    w
+    """
+    with open(fpath, "rb") as f:
+        params = pickle.load(f)
+    m = params["<MEANS_INVVARS>"] / params["<INV_VARS>"]
+    iE = params["<INV_VARS>"]
+    w = params["<WEIGHTS>"]
+    return m, iE, w
+
+
+def load_ivector_extractor(fpath):
+    """Load ivector extractor parameters.
+
+    Parameters
+    ----------
+    fpath : Path
+        Path to pickled ivector extractor model.
+
+    Returns
+    -------
+    v
+    """
+    with open(fpath, "rb") as f:
+        params = pickle.load(f)
+    m = params["M"]
+    v = np.transpose(m, (2, 0, 1))
+    return v
+
+
 def load_frame_counts(fpath):
     """Load mapping from URIs to frame counts from ``fpath``.
 
@@ -103,7 +144,7 @@ def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
             continue
         n_speakers += 1
         speaker_dict[seg.speaker_id] = n_speakers + 1
-    
+
     # Create reference frame labeling:
     # - 0: non-speech
     # - 1: overlapping speech
@@ -113,7 +154,7 @@ def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
     for seg in segs:
         # Integer id of speaker.
         speaker_label = speaker_dict[seg.speaker_id]
-        
+
         # Assign this label to all frames in the segment that are not
         # already assigned.
         for ind in range(seg.onset, seg.offset+1):
@@ -272,39 +313,14 @@ def main():
     # utt_list
     frame_counts = load_frame_counts(utt2num_frames_filename)
     recording_ids = sorted(frame_counts.keys())
-    
+
     print("------------------------------------------------------------------------")
     print("")
     sys.stdout.flush()
 
-    # Load the diagonal UBM and i-vector extractor
-    with open(args.dubm_model, 'rb') as fh:
-        dubm_para = pickle.load(fh)
-    with open(args.ie_model, 'rb') as fh:
-        ie_para = pickle.load(fh)
-
-    DUBM_WEIGHTS = None
-    DUBM_MEANS_INVVARS = None
-    DUBM_INV_VARS = None
-    IE_M = None
-
-    for key in dubm_para.keys():
-        if key == "<WEIGHTS>":
-            DUBM_WEIGHTS = dubm_para[key]
-        elif key == "<MEANS_INVVARS>":
-            DUBM_MEANS_INVVARS = dubm_para[key]
-        elif key == "<INV_VARS>":
-            DUBM_INV_VARS = dubm_para[key]
-        else:
-            continue
-
-    for key in ie_para.keys():
-        if key == "M":
-            IE_M = np.transpose(ie_para[key], (2, 0, 1))
-    m = DUBM_MEANS_INVVARS / DUBM_INV_VARS
-    iE = DUBM_INV_VARS
-    w = DUBM_WEIGHTS
-    V = IE_M
+    # Load the diagonal UBM and i-vector extractor.
+    m, iE, w = load_dubm(args.dubm_model)
+    V = load_ivector_extractor(args.ie_model)
 
     # Load the MFCC features
     feats_dict = {}
