@@ -233,14 +233,6 @@ def write_rttm_file(rttm_path, labels, channel=0, step=0.01, precision=2):
             f.write(line)
 
 
-def match_DER(string):
-    string_split = string.split('\n')
-    for line in string_split:
-        if "OVERALL SPEAKER DIARIZATION ERROR" in line:
-            return line
-    return 0
-
-
 def main():
     parser = argparse.ArgumentParser(description='VB Resegmentation')
     parser.add_argument(
