@@ -187,32 +187,50 @@ def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
     return ref
 
 
-def create_rttm_output(recording_id, predicted_label, output_dir, channel):
-    num_frames = len(predicted_label)
+def write_rttm_file(rttm_path, labels, channel=0, step=0.01, precision=2):
+    """Write RTTM file.
 
-    start_idx = 0
-    idx_list = []
+    Parameters
+    ----------
+    rttm_path : Path
+        Path to output RTTM file.
 
-    last_label = predicted_label[0]
-    for i in range(num_frames):
-        if predicted_label[i] == last_label: # The speaker label remains the same.
-            continue
-        else: # The speaker label is different.
-            if last_label != 0: # Ignore the silence.
-                idx_list.append([start_idx, i, last_label])
-            start_idx = i
-            last_label = predicted_label[i]
-    if last_label != 0:
-        idx_list.append([start_idx, num_frames, last_label])
+    labels : ndarray, (n_frames,)
+        Array of predicted speaker labels. See ``create_ref_file`` for explanation.
 
-    rttmf = Path(output_dir, f"{recording_id}_predict.rttm")
-    with open(rttmf, 'w') as fh:
-        for start_frame, end_frame, label in idx_list:
-            onset = start_frame / 100.
-            duration = (end_frame - start_frame) / 100.
-            line = (f'SPEAKER {recording_id} {channel} {onset:.2f} {duration:.2f} <NA> <NA> {label} <NA> <NA>\n')
-            fh.write(line)
-    return 0
+    channel : int, optional
+        Channel (0-indexed) to output segments for.
+        (Default: 0)
+
+    step : float, optional
+        Duration in seconds between onsets of frames.
+        (Default: 0.01)
+
+    precision : int, optional
+        Output ``precision`` digits.
+        (Default: 2)
+    """
+    rttm_path = Path(rttm_path)
+
+    # Determine indices of onsets/offsets of speaker turns.
+    is_cp = np.diff(labels, n=1, prepend=-999, append=-999) != 0
+    cp_inds = np.nonzero(is_cp)[0]
+    bis = cp_inds[:-1]  # Last changepoint is "fake".
+    eis = cp_inds[1:] -1
+
+    # Write turns to RTTM.
+    with open(rttm_path, 'w') as f:
+        for bi, ei in zip(bis, eis):
+            label = labels[bi]
+            if label < 2:
+                # Ignore non-speech and overlapped speech.
+                continue
+            n_frames = ei - bi + 1
+            duration = n_frames*step
+            onset = bi*step
+            recording_id = rttm_path.stem
+            line = f'SPEAKER {recording_id} {channel} {onset:.{precision}f} {duration:.{precision}f} <NA> <NA> speaker{label} <NA> <NA>\n'
+            f.write(line)
 
 
 def match_DER(string):
@@ -400,8 +418,9 @@ def main():
         print("L_out", L_out)
 
         # Create the output rttm file and compute the DER after re-segmentation.
-        rttm_dir = Path(args.output_dir, "rttm")
-        create_rttm_output(recording_id, predicted_label, rttm_dir, args.channel)
+        write_rttm_file(
+            Path(args.output_dir, "per_file_rttm", recording_id + '.rttm'),
+            predicted_label, channel=args.channel, step=args.step, precision=2)
         print("")
         print("------------------------------------------------------------------------")
         print("")
