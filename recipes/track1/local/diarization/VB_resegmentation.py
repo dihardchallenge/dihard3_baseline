@@ -11,17 +11,6 @@ import numpy as np
 import VB_diarization_v2 as VB_diarization
 
 
-
-def load_uris(fpath):
-    """Return URIs from first column of ``fpath``."""
-    uris = []
-    with open(fpath, 'r') as f:
-        for line in f:
-            uri, _ = line.split(maxsplit=1)
-            uris.append(uri)
-    return uris
-
-
 def load_frame_counts(fpath):
     """Load mapping from URIs to frame counts from ``fpath``.
 
@@ -272,15 +261,18 @@ def main():
     # Set NumPy RNG to ensure reproducibility.
     np.random.seed(args.seed)
 
-    # The data directory should contain wav.scp, spk2utt, utt2spk and feats.scp
-    utt2spk_filename = Path(args.data_dir, "utt2spk")
+    # Paths to files in the data directory that we will be referring to:
+    # - feats.scp  --  script file mapping recording ids to features spanning
+    #   them
+    # - utt2num_frames  --  mapping from recording ids to frame counts of
+    #   corresponding features.
     utt2num_frames_filename = Path(args.data_dir, "utt2num_frames")
     feats_scp_filename = Path(args.data_dir, "feats.scp")
-    rttm_dir = Path(args.output_dir, "rttm")
 
     # utt_list
-    recording_ids = load_uris(utt2spk_filename)
     frame_counts = load_frame_counts(utt2num_frames_filename)
+    recording_ids = sorted(frame_counts.keys())
+    
     print("------------------------------------------------------------------------")
     print("")
     sys.stdout.flush()
@@ -391,7 +383,8 @@ def main():
         print("sp_out", sp_out)
         print("L_out", L_out)
 
-        # Create the output rttm file and compute the DER after re-segmentation
+        # Create the output rttm file and compute the DER after re-segmentation.
+        rttm_dir = Path(args.output_dir, "rttm")
         create_rttm_output(recording_id, predicted_label, rttm_dir, args.channel)
         print("")
         print("------------------------------------------------------------------------")
