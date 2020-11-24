@@ -38,7 +38,7 @@ def utt_num_frames_mapping(utt2num_frames_filename):
 
 Segment = namedtuple('Segment', ['onset', 'offset', 'speaker_id'])
 
-def create_ref_file(uttname, utt2num_frames, full_rttm_filename, step=0.01):
+def create_ref_file(recording_id, rec2num_frames, full_rttm_path, step=0.01):
     """Return frame-wise labeling for  based on the initial diarization.
 
     The resulting labeling is an an array whose ``i``-th entry provides the label
@@ -48,15 +48,15 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, step=0.01):
     - 1:   indicates more than one speaker present (i.e., overlapped speech)
     - n>1: integer id of the SOLE speaker present in frame
 
-    Speakers are assigned integer ids >1 based on their first utterance in the
+    Speakers are assigned integer ids >1 based on their first turn in the
     recording.
 
     Parameters
     ----------
-    uttname : str
+    recording_id : str
         URI of recording to extract labeling for.
 
-    utt2num_frames : dict
+    rec2num_frames : dict
         Mapping from recording URIs to lengths in frames.
 
     full_rttm_filename : Path
@@ -71,14 +71,14 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, step=0.01):
     ref : ndarray, (n_frames,)
         Framewise speaker labels.
     """
-    n_frames = utt2num_frames[uttname]
+    n_frames = rec2num_frames[recording_id]
 
     # Load speech segments for target recording from RTTM.
     segs = []
-    with open(full_rttm_filename, 'r') as f:
+    with open(full_rttm_path, 'r') as f:
         for line in f:
             fields = line.strip().split()
-            if fields[1] != uttname:
+            if fields[1] != recording_id:
                 # Skip segments from other recordings.
                 continue
             onset = float(fields[3])
@@ -135,7 +135,7 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, step=0.01):
             ref[ind] = label
 
     # Diagnostics.
-    print(f"{n_speakers} SPEAKERS IN {uttname}")
+    print(f"{n_speakers} SPEAKERS IN {recording_id}")
     n_ref_frames = len(ref)
     n_sil_frames = np.sum(ref == 0)
     sil_prop = 100.* n_sil_frames / n_ref_frames
@@ -144,8 +144,6 @@ def create_ref_file(uttname, utt2num_frames, full_rttm_filename, step=0.01):
     print(f"{n_ref_frames} TOTAL, {n_sil_frames} SILENCE({sil_prop:.0f}%), "
           f"{n_overlap_frames} OVERLAPPING({overlap_prop:.0f}%)")
     speaker_hist = np.bincount(ref)[2:]
-    print(np.unique(ref))
-    print(speaker_hist)
     speaker_dist = speaker_hist/speaker_hist.sum()
     print(f"SPEAKER FREQUENCIES (DISCOUNTING OVERLAPS) "
           f"{np.array2string(speaker_dist, precision=2)}")
