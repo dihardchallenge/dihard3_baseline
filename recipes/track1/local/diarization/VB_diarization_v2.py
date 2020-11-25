@@ -14,12 +14,27 @@
 
 #
 # Revision History
-# - L. Burget  - original version
-# - S. Prachi - Modified version described in
+# ----------------
+# - L. Burget  --  original version
+# - Prachi Singh  ---  Modified version described in
 #
 #       P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
 #       "LEAP Diarization System for the Second DIHARD Challenge".
 #       Proc. of Interspeech 2019.
+"""This is a modified version of ``VB_diarization.py`` module from BUT's VBx
+package:
+
+    https://github.com/BUTSpeechFIT/VBx/blob/master/VB_diarization.py
+
+Specifically, it has been modified to allow posterior scaling of zeroth order
+statistics following Singh et al. (2019).
+
+References
+----------
+P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
+"LEAP Diarization System for the Second DIHARD Challenge".
+Proc. of Interspeech 2019.
+"""
 
 
 import numpy as np
@@ -124,7 +139,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   NN_stat1 =  exp_ne(ll - G[:,np.newaxis])
   NN = NN_stat1 * statScale
   NN[NN<sparsityThr] = 0.0
-  
+
   #Kx = np.sum(NN * (np.log(w) - np.log(NN)), 1)
   NN = coo_matrix(NN) # represent zero-order stats using sparse matrix
   if statScale > 1.0 :
@@ -169,7 +184,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
     downsampler=np.array(1)
 
   NN=NN.toarray()
-    
+
   Li = [[LL]] # for the 0-th iteration,
   if ref is not None:
     Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)]
@@ -237,7 +252,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
         #matplotlib.pyplot.imshow(np.atleast_2d(ref), interpolation='none', aspect='auto',
         #                         cmap=matplotlib.pyplot.cm.Pastel1, extent=(0, len(ref), -0.05, 1.05))
         plt.savefig("result.pdf")
-        
+
       print (ii, Li[-2])
 
     if ii > 0 and L - Li[-2][0] < epsilon:
