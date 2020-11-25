@@ -21,11 +21,11 @@ References
   "LEAP Diarization System for the Second DIHARD Challenge".
   Proc. of Interspeech 2019.
 """
-#Revision history
-#----------------
-#- Zili Huang  --  original vesion
-#- Prachi Singh  --  minor edits
-#- Neville Ryant  --  major refactoring, improved documentation, and PEP8
+# Revision history
+# ----------------
+# - Zili Huang  --  original vesion
+# - Prachi Singh  --  minor edits
+# - Neville Ryant  --  major refactoring, improved documentation, and PEP8
 #   adherence
 import argparse
 from collections import defaultdict
