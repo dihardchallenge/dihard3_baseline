@@ -21,6 +21,11 @@ loop=0.45
 max_iters=1
 
 
+# Set occupations below this threshold to 0.0. Since the algorithm uses sparse
+# matrices, this will reduces memory footprint and speed up maxtrix operations.
+sparsityTrh=0.0001
+
+
 ################################################################################
 # Parse options, etc.
 ################################################################################
@@ -90,13 +95,9 @@ if [ $stage -le 2 ]; then
   echo "$0: Performing VH-HMM resegmentation..."
   local/diarization/VB_resegmentation.sh \
     --nj $nj --cmd "$train_cmd" \
-    --initialize 1 --max_iters $max_iters \
+    --initialize true --max_iters $max_iters \
     --statScale $statscale --loopProb $loop \
-    --channel 1 \
+    --channel 1 --sparsityThr $sparsityThr \
     $whole_data_dir $init_rttm $out_dir $dubm_model $ie_model
-  cat $out_dir/rttm/*.rttm | sort > $out_dir/rttm.tmp
-  rm -fr $out_dir/rttm
-  mv $out_dir/rttm.tmp $out_dir/rttm
-  local/diarization/split_rttm.py \
-    $out_dir/rttm $out_dir/per_file_rttm
+  cat $out_dir/per_file_rttm/*.rttm | sort > $out_dir/rttm
 fi
