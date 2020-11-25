@@ -162,7 +162,7 @@ def load_rttm(rttm_path, frame_counts, step=0.01, target_rec_ids=None):
     return recordings
 
 
-def get_labels(segs, n_frames, recording_id):
+def get_labels(segs, n_frames):
     """Return frame-wise labeling corresponding to a segmentation.
 
     The resulting labeling is an an array whose ``i``-th entry provides the label
@@ -182,9 +182,6 @@ def get_labels(segs, n_frames, recording_id):
 
     n_frames : int
         Length of recording in frames.
-
-    recording_id : str
-        Recording id. Used only for logging.
 
     Returns
     -------
@@ -224,22 +221,27 @@ def get_labels(segs, n_frames, recording_id):
                 label = 1
             ref[ind] = label
 
-    # Diagnostics.
-    print(f"{n_speakers} SPEAKERS IN {recording_id}")
-    n_ref_frames = len(ref)
-    n_sil_frames = np.sum(ref == 0)
-    sil_prop = 100.* n_sil_frames / n_ref_frames
-    n_overlap_frames = np.sum(ref == 1)
-    overlap_prop = 100.* n_overlap_frames / n_ref_frames
-    print(f"{n_ref_frames} TOTAL, {n_sil_frames} SILENCE({sil_prop:.0f}%), "
-          f"{n_overlap_frames} OVERLAPPING({overlap_prop:.0f}%)")
-    speaker_hist = np.bincount(ref)[2:]
+    return ref
+
+
+def print_diagnostics(labels):
+    """Print diagnostics for labeling."""
+    n_speakers = labels.max() - 1
+    print(f"# SPEAKERS: {n_speakers}")
+    n_frames = len(labels)
+    n_sil_frames = np.sum(labels == 0)
+    sil_prop = 100.* n_sil_frames / n_frames
+    n_overlap_frames = np.sum(labels == 1)
+    overlap_prop = 100.* n_overlap_frames / n_frames
+    print(f"TOTAL: {n_frames} frames, "
+          f"SILENCE: {n_sil_frames} frames ({sil_prop:.0f}%), "
+          f"OVERLAP {n_overlap_frames} frames ({overlap_prop:.0f}%)")
+    speaker_hist = np.bincount(labels)[2:]
     speaker_dist = speaker_hist/speaker_hist.sum()
-    print(f"SPEAKER FREQUENCIES (DISCOUNTING OVERLAPS) "
-          f"{np.array2string(speaker_dist, precision=2)}")
+    print(f"SPEAKER FREQUENCIES (DISCOUNTING OVERLAPS): "
+          f"{np.array2string(speaker_dist, precision=2, suppress_small=True)}")
     print("")
 
-    return ref
 
 
 def write_rttm_file(rttm_path, labels, channel=0, step=0.01, precision=2):
@@ -251,7 +253,7 @@ def write_rttm_file(rttm_path, labels, channel=0, step=0.01, precision=2):
         Path to output RTTM file.
 
     labels : ndarray, (n_frames,)
-        Array of predicted speaker labels. See ``create_ref_file`` for explanation.
+        Array of predicted speaker labels. See ``get_labels`` for explanation.
 
     channel : int, optional
         Channel (0-indexed) to output segments for.
@@ -367,10 +369,6 @@ def main():
     # Set NumPy RNG to ensure reproducibility.
     np.random.seed(args.seed)
 
-    print("------------------------------------------------------------------------")
-    print("")
-    sys.stdout.flush()
-
     # Load the diagonal UBM and i-vector extractor.
     m, iE, w = load_dubm(args.dubm_model)
     V = load_ivector_extractor(args.ie_model)
@@ -389,6 +387,9 @@ def main():
         args.init_rttm_filename, frame_counts, step=args.step,
         target_rec_ids=recording_ids)
 
+    print("------------------------------------------------------------------------")
+    print("")
+
     # Resegment the recordings serially.
     for recording_id in recording_ids:
         # Convert the initial segmentation (e.g., from AHC) into an array of
@@ -398,16 +399,19 @@ def main():
         # - n>1: speaker n
         # We use 0 to denote silence frames and 1 to denote overlapping frames.
         init_labels = get_labels(
-            recordings[recording_id], frame_counts[recording_id], recording_id)
+            recordings[recording_id], frame_counts[recording_id])
+        print(f'INITIAL SEGMENTATION DIAGNOSTICS for "{recording_id}"')
+        print_diagnostics(init_labels)
+
 
         # Grab the corresponding features.
         X = feats_dict[recording_id].astype(np.float64)
 
         # Drop frames corresponding to silence and overlapped speech.
         mask = (init_labels >= 2)
-        X_voiced = X[mask]
-        init_labels_voiced = init_labels[mask]
-        init_labels_voiced -= 2  # So the labeling starts at 0.
+        X_masked = X[mask]
+        init_labels_masked = init_labels[mask]
+        init_labels_masked -= 2  # So the labeling starts at 0.
         if len(init_labels) == 0:
             print(
                 f"Warning: the initial segmentation for {recording_id} has no "
@@ -418,7 +422,7 @@ def main():
         # segmentation.
         if args.initialize:
             q = VB_diarization.frame_labels2posterior_mx(
-                init_labels_voiced, args.max_speakers)
+                init_labels_masked, args.max_speakers)
         else:
             q = None
             print("RANDOM INITIALIZATION\n")
@@ -434,33 +438,32 @@ def main():
         # Li - values of auxiliary function (and DER and frame cross-entropy
         #      between q and reference if 'ref' is provided) over iterations.
         q_out, sp_out, L_out = VB_diarization.VB_diarization(
-            X_voiced, recording_id, m, iE, w, V, sp=None, q=q,
+            X_masked, recording_id, m, iE, w, V, sp=None, q=q,
             maxSpeakers=args.max_speakers, maxIters=args.max_iters, VtiEV=None,
             downsample=args.downsample, alphaQInit=args.alphaQInit,
             sparsityThr=args.sparsityThr, epsilon=args.epsilon,
             minDur=args.minDur, loopProb=args.loopProb, statScale=args.statScale,
             llScale=args.llScale, ref=None, plot=False)
 
-        # 
-        predicted_labels_voiced = np.argmax(q_out, 1) + 2
+        # Reconstruct a labeling relative to the original UNMASKED frames. Note
+        # that in the following, we simply ignore overlap frames entirely and
+        # treat them as silence. When the initial segmentation has no overlaps
+        # (e..g, output of AHC) this is not problematic, but it is less than
+        # ideal if there initial segmentation accounts for overlaps.
+        predicted_labels_masked = np.argmax(q_out, 1) + 2
         predicted_labels = (np.zeros(len(mask))).astype(int)
-        predicted_labels[mask] = predicted_labels_voiced
+        predicted_labels[mask] = predicted_labels_masked
 
-        duration_list = []
-        for i in range(args.max_speakers):
-            num_frames = np.sum(predicted_labels == (i + 2))
-            if num_frames == 0:
-                continue
-            else:
-                duration_list.append(1.0 * num_frames / len(predicted_labels))
-        duration_list.sort()
-        duration_list = list(map(lambda x: '{0:.2f}'.format(x), duration_list))
-        n_speakers = len(duration_list)
-        dur_dist = " ".join(duration_list)
-        print(f"PREDICTED {n_speakers} SPEAKERS")
-        print(f"DISTRIBUTION {dur_dist}")
-        print("sp_out", sp_out)
-        print("L_out", L_out)
+        # More diagnostics.
+        print(f'RESEGMENTATION DIAGNOSTICS for "{recording_id}"')
+        print_diagnostics(predicted_labels)
+        print(f"LEARNED SPEAKER PRIORS: "
+              f"{np.array2string(sp_out, precision=3, suppress_small=True)}")
+        aux_loss = np.squeeze(L_out)
+        print('AUX LOSS VALUES')
+        for n, l in enumerate(aux_loss):
+            print(f"ITER: {n}, LOSS: {l}")
+
 
         # Create the output rttm file and compute the DER after re-segmentation.
         write_rttm_file(
@@ -469,7 +472,6 @@ def main():
         print("")
         print("------------------------------------------------------------------------")
         print("")
-        sys.stdout.flush()
 
 
 if __name__ == "__main__":
