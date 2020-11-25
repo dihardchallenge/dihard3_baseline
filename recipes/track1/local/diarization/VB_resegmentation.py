@@ -1,4 +1,32 @@
 #!/usr/bin/env python
+"""This script resegments an initial diarization using a variant of the VB-HMM
+method of Landini et al. (2020). Specifically, it has been modified to allow
+posterior of the zeroth order statistics following Singh et al. (2019).
+
+It wraps the module ``VB_diarization_v2.py``, which is based on BUT's VBx:
+
+    https://github.com/BUTSpeechFIT/VBx
+
+The wrapper script is, itself, based on the ``VB_resegmentation.py`` script from
+the Kaldi CALLHOME diarization recipe:
+
+    https://github.com/kaldi-asr/kaldi/blob/master/egs/callhome_diarization/v1/diarization/VB_resegmentation.py
+
+
+References
+----------
+- F. Landini, S. Wang, M. Diez, L. Burget et al. (2020)."BUT System for the
+  Second DIHARD Speech Diarization Challenge". Proc. ofICASSP 2020.
+- P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
+  "LEAP Diarization System for the Second DIHARD Challenge".
+  Proc. of Interspeech 2019.
+"""
+#Revision history
+#----------------
+#- Zili Huang  --  original vesion
+#- Prachi Singh  --  minor edits
+#- Neville Ryant  --  major refactoring, improved documentation, and PEP8
+#   adherence
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
