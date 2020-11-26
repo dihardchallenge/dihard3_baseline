@@ -136,35 +136,38 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   ll = (X**2).dot(-0.5*iE.T) + X.dot(iE.T*m.T)-0.5*((iE * m**2 - np.log(iE)).sum(1) - 2*np.log(w) + D*np.log(2*np.pi))
   ll *= llScale
   G = logsumexp_ne(ll, axis=1)
-  NN_stat1 =  exp_ne(ll - G[:,np.newaxis])
+  NN_stat1 = exp_ne(ll - G[:, np.newaxis])
   NN = NN_stat1 * statScale
   NN[NN<sparsityThr] = 0.0
 
   #Kx = np.sum(NN * (np.log(w) - np.log(NN)), 1)
   NN = coo_matrix(NN) # represent zero-order stats using sparse matrix
-  if statScale > 1.0 :
-    NN_stat1[NN_stat1<sparsityThr] = 0.0
-    NN_stat1 = coo_matrix(NN_stat1)
-  else:
-    del NN_stat1
+  print('Sparsity (NN): ', len(NN.row), sparsity(NN))
 
-  print('Sparsity: ', len(NN.row), float(len(NN.row))/np.prod(NN.shape))
   LL = np.sum(G) # total log-likelihod as calculated using UBM
 
-  mixture_sum = coo_matrix((np.ones(C*D), (np.repeat(range(C),D), range(C*D))), shape=(C, C*D))
+  mixture_sum = coo_matrix(
+    (np.ones(C*D), (np.repeat(range(C),D), range(C*D))), shape=(C, C*D))
 
   #G = np.sum((NN.multiply(ll - np.log(w))).toarray(), 1) + Kx  # eq. (15) # Aleready calculated above
 
   # Calculate per-frame first order statistics projected into the R-dim. subspace
   # V^T \Sigma^{-1} F_m
-  if statScale > 1.0 :  # scaling first order statistics
-    F_s = coo_matrix((((X[NN_stat1.row]-m[NN_stat1.col])*NN_stat1.data[:,np.newaxis]).flat,
-                       (NN_stat1.row.repeat(D), NN_stat1.col.repeat(D)*D+np.tile(range(D), len(NN_stat1.col)))), shape=(nframes, D*C))
-    VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
+  def compute_F_s(zeta):
+    data = ((X[zeta.row] - m[zeta.col])*zeta.data[:,np.newaxis]).flat
+    row_inds = zeta.row.repeat(D)
+    col_inds = zeta.col.repeat(D)*D + np.tile(range(D), len(zeta.col))
+    return coo_matrix(
+      (data, (row_inds, col_inds)), shape=(nframes, D*C))
+  if statScale > 1.0:
+    NN_stat1[NN_stat1 < sparsityThr] = 0.0
+    NN_stat1 = coo_matrix(NN_stat1)
+    print('Sparsity: ', len(NN_stat1.row), sparsity(NN_stat1))
+    F_s = compute_F_s(NN_stat1)
   else:
-    F_s = coo_matrix((((X[NN.row]-m[NN.col])*NN.data[:,np.newaxis]).flat,
-                       (NN.row.repeat(D), NN.col.repeat(D)*D+np.tile(range(D), len(NN.col)))), shape=(nframes, D*C))
-    VtiEF = F_s.tocsr().dot((iE.flat * V).T) ; del F_s
+    F_s = compute_F_s(NN)
+  VtiEF = F_s.tocsr().dot((iE.flat * V).T)
+  del F_s
 
   ## The code above is only efficient implementation of the following comented code
   #VtiEF = 0;
@@ -183,11 +186,11 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   else:
     downsampler=np.array(1)
 
-  NN=NN.toarray()
+  NN = NN.toarray()
 
   Li = [[LL]] # for the 0-th iteration,
   if ref is not None:
-    Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)]
+    Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)
 
   lls = np.zeros_like(q)
   tr = np.eye(minDur*maxSpeakers, k=1)
@@ -258,6 +261,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
     if ii > 0 and L - Li[-2][0] < epsilon:
       if L - Li[-1][0] < 0: print('WARNING: Value of auxiliary function has decreased!')
       break
+
 
   if downsample is not None:
     #upsample resulting q to match number of frames in the input utterance
@@ -347,6 +351,11 @@ def logsumexp_ne(x, axis=0):
 
 def exp_ne(x, out=None):
     return ne.evaluate("exp(x)", out=None)
+
+
+def sparsity(a):
+  """Return sparsity of sparse COO array."""
+  return len(a.row) / np.prod(a.shape)
 
 
 # Convert vector with lower-triangular coefficients into symetric matrix
