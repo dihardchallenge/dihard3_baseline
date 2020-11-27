@@ -142,7 +142,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
 
   #Kx = np.sum(NN * (np.log(w) - np.log(NN)), 1)
   NN = coo_matrix(NN) # represent zero-order stats using sparse matrix
-  print('Sparsity (NN): ', len(NN.row), sparsity(NN))
+  log_sparsity(NN, 'NN')
 
   LL = np.sum(G) # total log-likelihod as calculated using UBM
 
@@ -162,7 +162,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
   if statScale > 1.0:
     NN_stat1[NN_stat1 < sparsityThr] = 0.0
     NN_stat1 = coo_matrix(NN_stat1)
-    print('Sparsity: ', len(NN_stat1.row), sparsity(NN_stat1))
+    log_sparsity(NN_stat1, 'NN_stat1')
     F_s = compute_F_s(NN_stat1)
   else:
     F_s = compute_F_s(NN)
@@ -353,11 +353,14 @@ def exp_ne(x, out=None):
     return ne.evaluate("exp(x)", out=None)
 
 
-def sparsity(a):
-  """Return sparsity of sparse COO array."""
-  return len(a.row) / np.prod(a.shape)
+def log_sparsity(a, var_name):
+     """Log sparsity of sparse COO array to STDOUT."""
+     sparsity =  len(a.row) / np.prod(a.shape)
+     print(
+       f"SPARSITY ({var_name}): {100.*sparsity:.3f}% ({len(a.row)} non-zero "
+       f"entries)")
 
-
+     
 # Convert vector with lower-triangular coefficients into symetric matrix
 def tril_to_sym(tril):
     R = np.sqrt(len(tril)*2).astype(int)
