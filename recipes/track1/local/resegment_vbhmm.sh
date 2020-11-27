@@ -23,7 +23,7 @@ max_iters=1
 
 # Set occupations below this threshold to 0.0. Since the algorithm uses sparse
 # matrices, this will reduces memory footprint and speed up maxtrix operations.
-sparsityThr=0.0001
+sparsityThr=0.001
 
 
 ################################################################################
