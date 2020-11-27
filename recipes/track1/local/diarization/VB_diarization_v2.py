@@ -190,7 +190,7 @@ def VB_diarization(X,filename, m, iE, w, V, sp=None, q=None,
 
   Li = [[LL]] # for the 0-th iteration,
   if ref is not None:
-    Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)
+    Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)]
 
   lls = np.zeros_like(q)
   tr = np.eye(minDur*maxSpeakers, k=1)
