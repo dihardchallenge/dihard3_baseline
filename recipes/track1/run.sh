@@ -9,9 +9,9 @@ PYTHON=python  # Python to use; defaults to system Python.
 # Configuration
 ################################################################################
 nj=40
-stage=5
+stage=0
 diarization_stage=0
-vb_hmm_stage=2
+vb_hmm_stage=0
 
 
 ################################################################################
@@ -138,8 +138,10 @@ fi
 
 
 if [ $stage -le 8 ]; then
-  echo "$0: Scoring VB-HMM resegmentation on EVAL..."
-  local/diarization/score_diarization.sh \
-    --scores-dir exp/dihard3_diarization_nnet_1a_vbhmm_eval/scoring \
-    $DIHARD_EVAL_DIR exp/dihard3_diarization_nnet_1a_vbhmm_eval/per_file_rttm
+  if [ -d $DIHARD_EVAL_DIR/data/rttm/ ]; then
+    echo "$0: Scoring VB-HMM resegmentation on EVAL..."
+    local/diarization/score_diarization.sh \
+      --scores-dir exp/dihard3_diarization_nnet_1a_vbhmm_eval/scoring \
+      $DIHARD_EVAL_DIR exp/dihard3_diarization_nnet_1a_vbhmm_eval/per_file_rttm
+  fi
 fi
