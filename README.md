@@ -13,6 +13,18 @@ For further details about the training pipeline, please consult the companion pa
 
 
 
+
+# Overview
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Running the baseline recipes](#running-the-baseline-recipes)
+- [Expected results](#expected-results)
+- [Reproducibility](#reproducibility)
+
+
+
+
 # Prerequisites
 
 The following packages are required to run the baseline.
@@ -30,6 +42,8 @@ Additionally, you will need to obtain the relevant data releases from [LDC](http
 
 
 For instructions on obtaining these sets, please consult the [DIHARD III website](https://dihardchallenge.github.io/dihard3/).
+
+
 
 
 # Installation
@@ -53,6 +67,7 @@ source venv/bin/activate
 Alternately, you could use ``conda`` or ``pipenv``. Make sure to activate the environment before proceeding.
 
 
+
 ## Step 2: Installing Python dependencies
 
 Run the following command to install the required Python packages:
@@ -61,7 +76,7 @@ Run the following command to install the required Python packages:
 pip install -r requirements/core.txt
 ```
 
-If you intend to enable [detailed scoring for SAD output](#sad_scoring) in the track 2 recipe, you will also need to install the ``pandas``, ``pyannote.core``, and ``pyannote.metrics`` packages:
+If you intend to enable [detailed scoring for SAD output](#sad-scoring) in the track 2 recipe, you will also need to install the ``pandas``, ``pyannote.core``, and ``pyannote.metrics`` packages:
 
 ```bash
 pip install -r requirements/sad.txt
@@ -70,7 +85,7 @@ pip install -r requirements/sad.txt
 
 ## Step 3: Installing remaining dependencies
 
-We also need to install [Kaldi](https://github.com/kaldi-asr/kaldi) and [dscore](https://github.com/nryant/dscore). To do, run the the installation scripts in the ``tools/`` directory:
+We also need to install [Kaldi](https://github.com/kaldi-asr/kaldi) and [dscore](https://github.com/nryant/dscore). To do so, run the the installation scripts in the ``tools/`` directory:
 
 ```bash
 cd tools
@@ -80,6 +95,7 @@ cd ..
 ```
 
 Please check the output of these scripts to ensure that installation has succeeded. If succesful, you should see ``Successfully installed {Kaldi,dscore}.`` printed at the end. If installation of a component fails, please consult the output of the relevant installation script for additional details.
+
 
 
 
@@ -114,7 +130,7 @@ DIHARD_DEV_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2020E12_Third_DIH
 DIHARD_EVAL_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2020E13_Third_DIHARD_Challenge_Evaluation_Data
 ```
 
-Change the variables ``DIHARD_DEV_DIR`` and ``DIHARD_EVAL_DIR`` so that they point to the roots of the DIHARD III DEV and EVAL releases on your filesystem. Save your changes, exit the editor, and run
+Change the variables ``DIHARD_DEV_DIR`` and ``DIHARD_EVAL_DIR`` so that they point to the roots of the DIHARD III DEV and EVAL releases on your filesystem. Save your changes, exit the editor, and run:
 
 ```bash
 ./run.sh
@@ -145,8 +161,6 @@ local/diarize.sh: Extracting x-vectors..
 ```
 
 If any stage fails, the script will immediately exit with status 1.
-
-
 
 
 ### RTTM files
@@ -182,7 +196,6 @@ RTTM files will also be output after the VB-HMM resegmentation step, this time t
 
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/per_file_rttm``
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_eval/per_file_rttm``
-
 
 
 ### Scoring
@@ -224,12 +237,9 @@ local/diarization/score_diarization.sh: *** Full results are located at: exp/dih
 and detailed results written to ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/scoring``.
 
 
-
-
 ### Running on a grid
 
 **NOTE** that by default Kaldi scripts are configured for execution on a single machine. To run on a grid using a submission engine such as SGE or Slurm. make sure to edit ``recipes/track{1,2}/cmd.sh`` accordingly.
-
 
 
 ## Running the Track 2 recipe
@@ -251,7 +261,6 @@ edit the variables ``DIHARD_DEV_DIR`` and ``DIHARD_EVAL_DIR`` just as for track 
 As before, status updates will periodically printed to STDOUT and a failure at any stage will result in the script immediately exiting with status 1.
 
 
-
 ### RTTM files
 
 As was the case for track 1, following the AHC step RTTM files will be output to:
@@ -264,7 +273,6 @@ and following the VB-HMM resegmentation step, RTTM files will be output to:
 
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/per_file_rttm``
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_eval/per_file_rttm``
-
 
 
 ### Scoring
@@ -300,7 +308,6 @@ As was the case for the track 1 recipe, the original ``dscore`` logs will be out
 
 - ``exp/dihard3_diarization_nnet_1a_dev/scoring``
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/scoring``.
-
 
 
 ### SAD scoring
@@ -351,6 +358,7 @@ This behavior is enabled by setting ``eval_sad=true`` in the preamble of ``run.s
 
 
 
+
 # Expected results
 
 Expected DER and JER for the baseline system on the DIHARD III development and evaluation sets are presented in Tables 1 and 2.
@@ -374,7 +382,6 @@ Expected DER and JER for the baseline system on the DIHARD III development and e
 | Track 1 | full        | 19.41       | 19.25        | 41.66       | 42.45        |
 | Track 2 | core        | 22.28       | 27.34        | 47.75       | 51.91        |
 | Track 2 | full        | 21.71       | 25.36        | 43.66       | 46.95        |
- 
 
 
 ## Detailed scoring logs
@@ -387,7 +394,6 @@ For debugging purposes, for both tracks we provide the detailed scoring logs out
 - ``recipes/track2/expected_outputs/exp/dihard3_diarization_nnet_1a_vbhmm_dev/scoring``
 
 
-
 ## RTTMs
 
 We also provide the RTTMs produced by the AHC and VB-HMM resegmentation steps:
@@ -396,7 +402,6 @@ We also provide the RTTMs produced by the AHC and VB-HMM resegmentation steps:
 - ``recipes/track{1,2}/expected_outputs/exp/dihard3_diarization_nnet_1a_vbhmm_dev/per_file_rttm``
 - ``recipes/track{1,2}/expected_outputs/exp/dihard3_diarization_nnet_1a_eval/per_file_rttm``
 - ``recipes/track{1,2}/expected_outputs/exp/dihard3_diarization_nnet_1a_vbhmm_eval/per_file_rttm``
-
 
 
 ## SAD output
