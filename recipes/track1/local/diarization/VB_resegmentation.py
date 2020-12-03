@@ -3,9 +3,10 @@
 method of Landini et al. (2020). Specifically, it has been modified to allow
 posterior of the zeroth order statistics following Singh et al. (2019).
 
-It wraps the module ``VB_diarization_v2.py``, which is based on BUT's VBx:
+It wraps the module ``VB_diarization_v2.py``, which is based on ``VB_diarization.py``
+from:
 
-    https://github.com/BUTSpeechFIT/VBx
+    http://www.fit.vutbr.cz/~burget/VB_diarization.zip     
 
 The wrapper script is, itself, based on the ``VB_resegmentation.py`` script from
 the Kaldi CALLHOME diarization recipe:

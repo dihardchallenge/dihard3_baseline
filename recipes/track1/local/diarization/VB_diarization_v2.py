@@ -11,29 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+#
+#
+# This is a modified version of ``VB_diarization.py`` from:
+#
+#     http://www.fit.vutbr.cz/~burget/VB_diarization.zip
+#
 #
 # Revision History
 # ----------------
-# - L. Burget  --  original version
+# - Lukas Burget  --  original version
 # - Prachi Singh  ---  Modified version described in
 #
 #       P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
 #       "LEAP Diarization System for the Second DIHARD Challenge".
 #       Proc. of Interspeech 2019.
-"""This is a modified version of ``VB_diarization.py`` module from BUT's VBx
-package:
+"""This is a modified version of ``VB_diarization.py`` module from BUT's code for
+Diez et al. (2018):
 
-    https://github.com/BUTSpeechFIT/VBx/blob/master/VB_diarization.py
+    http://www.fit.vutbr.cz/~burget/VB_diarization.zip
 
 Specifically, it has been modified to allow posterior scaling of zeroth order
 statistics following Singh et al. (2019).
 
 References
 ----------
-P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
-"LEAP Diarization System for the Second DIHARD Challenge".
-Proc. of Interspeech 2019.
+- M. Diez, L. Burget, and P. Matejka. (2018). "Speaker Diarization based on
+  Bayesian HMM with Eigenvoice Priors." Proc. of Odyssey 2018.
+- P. Singh, Harsha Vardhana M A, S. Ganapathy, A. Kanagasundaram. (2019).
+  "LEAP Diarization System for the Second DIHARD Challenge".
+  Proc. of Interspeech 2019.
 """
 
 
