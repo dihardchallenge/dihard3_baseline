@@ -1,0 +1,6 @@
+numpy
+scipy
+numexpr
+intervaltree
+tabulate
+kaldi_io
