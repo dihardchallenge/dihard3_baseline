@@ -24,7 +24,7 @@ and on a per-domain basis:
 - false alarm rate
 - miss rate
 
-These metrics will be output to STDOUT as a table with the following 7
+These metrics will be output to STDOUT as a table with the following 10
 columns:
 
 - domain  --  recording domain; overall results are reported under the domain
@@ -35,7 +35,7 @@ columns:
 - fa  --  false alarm rate in percent
 - miss  --  miss rate in percent
 - fa duration  --  the total duration in seconds of all false alarms
-- miss duration  --  the total duration in seconds of all missesn
+- miss duration  --  the total duration in seconds of all misses
 - speech duration  --  the total duration in seconds of speech according to
   the reference segmentation
 - nonspeech duration  --  the total duration in seconds of non-speech
