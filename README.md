@@ -57,7 +57,7 @@ git clone https://github.com/dihardchallenge/dihard3_baseline.git
 cd dihard3_baseline
 ```
 
-While not required, we recommend running the recipes from a fresh virtual environment. If using ``virtualenv``
+While not required, we recommend running the recipes from a fresh virtual environment. If using ``virtualenv``:
 
 ```bash
 virtualenv venv
@@ -104,7 +104,7 @@ Please check the output of these scripts to ensure that installation has succeed
 We include full recipes for reproducing the baseline results for both DIHARD III tracks:
 
 - **Track 1**  —  Diarization using reference SAD.
-- **Track 2**  —  Diarization from scratch (i.e., using system produced SAD.
+- **Track 2**  —  Diarization from scratch (i.e., using system produced SAD).
 
 These recipes are located under the ``recipes/`` directory, which has the following structure:
 
@@ -123,9 +123,9 @@ cd recipes/track1
 and open ``run.sh`` in a text editor. The first section of this script defines paths to the official DIHARD III DEV and EVAL releases and should look something like the following:
 
 ```bash
-################################################################################   
-# Paths to DIHARD III releases                                                     
-################################################################################   
+################################################################################
+# Paths to DIHARD III releases
+################################################################################
 DIHARD_DEV_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2020E12_Third_DIHARD_Challenge_Development_Data
 DIHARD_EVAL_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2020E13_Third_DIHARD_Challenge_Evaluation_Data
 ```
@@ -151,7 +151,7 @@ steps/make_mfcc.sh: It seems not all of the feature files were successfully proc
 steps/make_mfcc.sh: Succeeded creating MFCC features for dihard3_dev
 local/diarize.sh: Preparing features for x-vector extractor...
 local/nnet3/xvector/prepare_feats.sh --nj 40 --cmd run.pl data/dihard3_dev data/dihard3_dev_cmn exp/make_mfcc/dihard3_dev_cmn/
-** split_data.sh: warning, #lines is (utt2spk,feats.scp) is (39743,39457); you can 
+** split_data.sh: warning, #lines is (utt2spk,feats.scp) is (39743,39457); you can
 **  use utils/fix_data_dir.sh data/dihard3_dev to fix this.
 local/nnet3/xvector/prepare_feats.sh: Succeeded creating xvector features for dihard3_dev
 local/diarize.sh: segments found; copying it
@@ -168,7 +168,7 @@ If any stage fails, the script will immediately exit with status 1.
 Following the initial AHC segmentation step, RTTM files for the DEV set are written to:
 
     exp/dihard3_diarization_nnet_1a_dev/per_file_rttm
-    
+
 This directory will contain one RTTM for each recording in the DIHARD III DEV set; e.g.:
 
 ```bash
@@ -191,7 +191,7 @@ ls exp/dihard3_diarization_nnet_1a_dev/per_file_rttm/*.rttm | wc -l
 Similarly, RTTM files for the EVAL set are written to:
 
     exp/dihard3_diarization_nnet_1a_eval/per_file_rttm
-    
+
 RTTM files will also be output after the VB-HMM resegmentation step, this time to:
 
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/per_file_rttm``
@@ -200,7 +200,7 @@ RTTM files will also be output after the VB-HMM resegmentation step, this time t
 
 ### Scoring
 
-DER and JER on the DEV set for the AHC output will be printed to STDOUT:
+DER and JER on the DEV set for the output of the AHC step will be printed to STDOUT:
 
 ```bash
 ./run.sh: Scoring first-pass diarization on DEV...
@@ -239,12 +239,12 @@ and detailed results written to ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/scor
 
 ### Running on a grid
 
-**NOTE** that by default Kaldi scripts are configured for execution on a single machine. To run on a grid using a submission engine such as SGE or Slurm. make sure to edit ``recipes/track{1,2}/cmd.sh`` accordingly.
+**NOTE** that by default the Kaldi scripts are configured for execution on a single machine. To run on a grid using a submission engine such as SGE or Slurm, make sure to edit ``recipes/track{1,2}/cmd.sh`` accordingly.
 
 
 ## Running the Track 2 recipe
 
-The track 2 recipe is almost identical to the track 1 recipe, except that it begins by training a SAD model on the DIHARD III DEV set, which it then uses to segment both the DEV and EVAL sets. This SAD output will then be used by the diarization system in lieu of the reference SAD that was used for track 1.
+The track 2 recipe is almost identical to the track 1 recipe, except that it begins by training a SAD model on the DIHARD III DEV set, which it then uses to segment both the DEV and EVAL data. This SAD output will then be used by the diarization system in lieu of the reference SAD that was used for track 1.
 
 To run the recipe, switch to ``recipes/track2/``:
 
@@ -258,7 +258,7 @@ edit the variables ``DIHARD_DEV_DIR`` and ``DIHARD_EVAL_DIR`` just as for track 
 ./run.sh
 ```
 
-As before, status updates will periodically printed to STDOUT and a failure at any stage will result in the script immediately exiting with status 1.
+As before, status updates will periodically be printed to STDOUT and a failure at any stage will result in the script immediately exiting with status 1.
 
 
 ### RTTM files
@@ -268,7 +268,7 @@ As was the case for track 1, following the AHC step RTTM files will be output to
 - ``exp/dihard3_diarization_nnet_1a_dev/per_file_rttm``
 - ``exp/dihard3_diarization_nnet_1a_eval/per_file_rttm``
 
-    
+
 and following the VB-HMM resegmentation step, RTTM files will be output to:
 
 - ``exp/dihard3_diarization_nnet_1a_vbhmm_dev/per_file_rttm``
@@ -312,29 +312,29 @@ As was the case for the track 1 recipe, the original ``dscore`` logs will be out
 
 ### SAD scoring
 
-Optionally, the script will score the SAD output for the DEV set against the reference SAD and compute the following metrics overall and on a per-domain basis:                                                                                                                                                                         
-                                                                                                                                                                                                   
-- [detection cost function (DCF)](https://www.nist.gov/system/files/documents/2018/11/05/opensat19_evaluation_plan_v2_11-5-18.pdf)                                                                                                                                                             
-- [detection error rate (DER)](http://herve.niderb.fr/download/pdfs/Bredin2017a.pdf)                                                                                                                                                                   
-- accuracy                                                                                                                                                                                         
-- false alarm rate                                                                                                                                                                                 
-- miss rate                                                                                                                                                                                        
-             
-These metrics will be output to STDOUT as a table with the following 7 columns:                                                                                                                                                                                           
-                                                                                                                                                                                                   
-- domain  --  recording domain; overall results are reported under the domain ``OVERALL``                                                                                                                                                                                      
-- dcf  --  detection cost function in percent                                                                                                                                                      
-- der  --  detection error rate in percent                                                                                                                                                         
-- accuracy  --  accuracy in percent                                                                                                                                                                
-- fa  --  false alarm rate in percent                                                                                                                                                              
-- miss  --  miss rate in percent                                                                                                                                                                   
-- fa duration  --  the total duration in seconds of all false alarms                                                                                                                               
-- miss duration  --  the total duration in seconds of all missesn                                                                                                                                  
-- speech duration  --  the total duration in seconds of speech according to                                                                                                                        
-  the reference segmentation                                                                                                                                                                       
-- nonspeech duration  --  the total duration in seconds of non-speech                                                                                                                              
-  according to the reference segmentation                                                                                                                                                          
-                                             
+Optionally, the script will score the SAD output for the DEV set against the reference SAD and compute the following metrics overall and on a per-domain basis:
+
+- [detection cost function (DCF)](https://www.nist.gov/system/files/documents/2018/11/05/opensat19_evaluation_plan_v2_11-5-18.pdf)
+- [detection error rate (DER)](http://herve.niderb.fr/download/pdfs/Bredin2017a.pdf)
+- accuracy
+- false alarm rate
+- miss rate
+
+These metrics will be output to STDOUT as a table with the following 10 columns:
+
+- domain  --  recording domain; overall results are reported under the domain ``OVERALL``
+- dcf  --  detection cost function in percent
+- der  --  detection error rate in percent
+- accuracy  --  accuracy in percent
+- fa  --  false alarm rate in percent
+- miss  --  miss rate in percent
+- fa duration  --  the total duration in seconds of all false alarms
+- miss duration  --  the total duration in seconds of all misses
+- speech duration  --  the total duration in seconds of speech according to
+  the reference segmentation
+- nonspeech duration  --  the total duration in seconds of non-speech
+  according to the reference segmentation
+
 For example:
 
 ```
@@ -354,14 +354,14 @@ webvideo              2.90   3.88       97.10   3.56    2.69          60.78     
 OVERALL               2.37   2.93       97.70   3.98    1.84         739.96          1239.45           67531.94              18585.67
 ```
 
-This behavior is enabled by setting ``eval_sad=true`` in the preamble of ``run.sh``. If you elect to do so, make sure you also install the ``pandas``, ``pyannote.core``, and ``pyannote.metrics`` packages [as described above](installation).
+This behavior is enabled by setting ``eval_sad=true`` in the preamble of ``run.sh``. If you elect to do so, make sure you also install the ``pandas``, ``pyannote.core``, and ``pyannote.metrics`` packages [as described above](#installation).
 
 
 
 
 # Expected results
 
-Expected DER and JER for the baseline system on the DIHARD III development and evaluation sets are presented in Tables 1 and 2.
+Expected DER and JER for the baseline system on the DIHARD III DEV and EVAL sets are presented in Tables 1 and 2.
 
 
 **Table 1: Baseline diarization results for the DIHARD III development and evaluation set using just AHC.**
@@ -406,7 +406,7 @@ We also provide the RTTMs produced by the AHC and VB-HMM resegmentation steps:
 
 ## SAD output
 
-For track 2, ehe ``segments`` files output by the SAD system are also provided:
+For track 2, the ``segments`` files output by the SAD system are also provided:
 
 - ``recipes/track2/expected_outputs/exp/dihard3_sad_tdnn_stats_decode_dev/segmentation/segments``
 - ``recipes/track2/expected_outputs/exp/dihard3_sad_tdnn_stats_decode_eval/segmentation/segments``
@@ -433,10 +433,9 @@ While we have attempted to make the pipeline as deterministic as possible, there
   Because dithering is applied during MFCC extraction, running the recipes on a grid or with a different number of splits (controlled by  ``nj``) will affect the RNG and, consequently, the dithering.
 - **CUDA**
 
-  The Track 2 recipe using GPUs to train the TDNN+stats network used for SAD. Many CUDA kernels are non-deterministic, so results for training this network will differ
-  run to run even on the same machine.
-  
-  
+  The Track 2 recipe uses GPUs to train the TDNN+stats network used for SAD. Many CUDA kernels are non-deterministic, so results for training this network will differ run-to-run even on the same machine.
+
+
 ## Pretrained SAD model
-  
-We have placed a copy of the TDNN+stats SAD model used to produce these results on [Zenodo](https://zenodo.org/record/4299009). To use this model, download and unarchive the tarball, then move it to ``recipes/track2/exp``. You will also need to modify ``recipes/track2/run.sh`` to skip stage 1.
+
+We have placed a copy of the TDNN+stats SAD model used to produce these results on [Zenodo](https://zenodo.org/). To use this model, download and unarchive the [tarball](https://zenodo.org/record/4299009), then move it to ``recipes/track2/exp``. You will also need to modify ``recipes/track2/run.sh`` to skip stage 1.
