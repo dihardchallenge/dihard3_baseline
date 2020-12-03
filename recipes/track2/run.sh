@@ -70,6 +70,7 @@ if [ $stage -le 0 ]; then
 fi
 
 
+
 #####################################
 # Train SAD system.
 #####################################
@@ -119,6 +120,8 @@ if [ $stage -le 3  -a  $eval_sad = "true" ]; then
     data/dihard3_dev/segments \
     data/dihard3_dev_seg/segments \
     $DIHARD_DEV_DIR/docs/recordings.tbl
+  echo ""
+  echo ""
 fi
 
 
