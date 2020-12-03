@@ -338,6 +338,8 @@ These metrics will be output to STDOUT as a table with the following 10 columns:
 For example:
 
 ```
+bash
+./run.sh: Scoring SAD output on CORE DEV set...
 domain                 dcf    der    accuracy     fa    miss    fa duration    miss duration    speech duration    nonspeech duration
 -------------------  -----  -----  ----------  -----  ------  -------------  ---------------  -----------------  --------------------
 audiobooks            1.13   1.38       98.90   1.64    0.95          24.56            54.79            5743.97               1499.00
@@ -352,6 +354,23 @@ socio_field           2.73   3.77       97.26   2.83    2.70          56.40     
 socio_lab             2.84   3.84       97.15   3.82    2.52          94.12           179.53            7134.36               2464.94
 webvideo              2.90   3.88       97.10   3.56    2.69          60.78           136.46            5080.94               1709.45
 OVERALL               2.37   2.93       97.70   3.98    1.84         739.96          1239.45           67531.94              18585.67
+
+
+./run.sh: Scoring SAD output on FULL DEV set...
+domain                 dcf    der    accuracy     fa    miss    fa duration    miss duration    speech duration    nonspeech duration
+-------------------  -----  -----  ----------  -----  ------  -------------  ---------------  -----------------  --------------------
+audiobooks            1.13   1.38       98.90   1.64    0.95          24.56            54.79            5743.97               1499.00
+broadcast_interview   1.65   2.05       98.39   2.44    1.39          38.68            81.05            5832.72               1583.28
+clinical              3.26   5.06       96.98   2.09    3.65         128.07           332.43            9099.55               6124.68
+court                 1.71   1.84       98.46   3.10    1.25          37.11            78.56            6298.96               1196.41
+cts                   3.90   2.95       97.36  10.43    1.72         402.84           562.68           32733.15               3863.92
+maptask               2.19   3.32       97.75   2.85    1.96          83.46           121.07            6167.54               2924.84
+meeting               6.07   2.42       97.74  21.42    0.95         120.53            78.69            8249.17                562.65
+restaurant            3.27   2.53       97.77   9.34    1.25          82.51            79.91            6409.74                883.52
+socio_field           2.73   3.77       97.26   2.83    2.70          56.40           141.74            5253.77               1989.93
+socio_lab             2.84   3.84       97.15   3.82    2.52          94.12           179.53            7134.36               2464.94
+webvideo              2.90   3.88       97.10   3.56    2.69          60.78           136.46            5080.94               1709.45
+OVERALL               2.55   3.04       97.58   4.55    1.88        1129.09          1846.90           98003.88              24802.61
 ```
 
 This behavior is enabled by setting ``eval_sad=true`` in the preamble of ``run.sh``. If you elect to do so, make sure you also install the ``pandas``, ``pyannote.core``, and ``pyannote.metrics`` packages [as described above](#installation).
