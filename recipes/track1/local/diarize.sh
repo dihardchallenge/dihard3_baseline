@@ -12,6 +12,15 @@ stage=0
 # Number of parallel jobs to use during extraction/scoring/clustering.
 nj=40
 
+# Proportion of energy to retain when performing the conversation-dependent
+# PCA projection. Usual default in Kaldi diarization recipes is 10%, but we use
+# 30%, which was found to give better performance by Diez et al. (2020).
+#
+#   Diez, M. et. al. (2020). "Optimizing Bayesian HMM based x-vector clustering
+#   for the Second DIHARD Speech Diarization Challenge." Proceedings of
+#   ICASSP 2020.
+target_energy=0.3
+
 # AHC threshold.
 thresh=-0.2
 
@@ -121,7 +130,7 @@ if [ $stage -le 3 ]; then
   cp $out_dir/xvectors/{mean.vec,transform.mat} $plda_model_dir
   local/diarization/nnet3/xvector/score_plda.sh \
     --nj $nj --cmd "$decode_cmd" \
-    --target-energy 0.3 \
+    --target-energy $target_energy \
     $plda_model_dir $out_dir/xvectors $plda_dir
 fi
 
