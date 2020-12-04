@@ -9,7 +9,7 @@ The x-vector extractor, PLDA model, UBM-GMM, and total variability matrix were t
 For further details about the training pipeline, please consult the companion paper to the challenge:
 
 - Ryant, Neville et al. (2020). "The Third DIHARD Diarization Challenge."
-  ([paper](git@github.com:nryant/dihard3_baseline.git)
+  ([paper](git@github.com:nryant/dihard3_baseline.git))
 
 
 
