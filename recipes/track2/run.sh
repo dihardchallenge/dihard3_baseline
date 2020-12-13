@@ -186,7 +186,7 @@ if [ $stage -le 7 ]; then
 fi
 
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 8 ] && [ -d $DIHARD_EVAL_DIR/data/rttm ]; then
   echo "$0: Scoring first-pass diarization on EVAL..."
   local/diarization/score_diarization.sh \
     --scores-dir exp/dihard3_diarization_nnet_1a_eval/scoring \
@@ -230,7 +230,7 @@ if [ $stage -le 11 ]; then
 fi
 
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 12 ] && [ -d $DIHARD_EVAL_DIR/data/rttm ]; then
   if [ -d $DIHARD_EVAL_DIR/data/rttm/ ]; then
     echo "$0: Scoring VB-HMM resegmentation on EVAL..."
     local/diarization/score_diarization.sh \
