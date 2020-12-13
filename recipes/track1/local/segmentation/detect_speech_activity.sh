@@ -248,7 +248,11 @@ if [ $stage -le 6 ]; then
     echo "$0: Generating new data directory from SAD..."
     utils/data/subsegment_data_dir.sh \
 	${whole_data_dir} ${seg_dir}/segments ${data_dir}
-    cp $src_data_dir/{wav.scp,rttm,reco2num_spk} ${data_dir}
+    for bn in wav.scp rttm reco2num_spk; do
+	if [ -f $src_data_dir/$bn ]; then
+	    cp $src_data_dir/$bn ${data_dir}
+	fi
+    done
     utils/fix_data_dir.sh ${data_dir}
     echo "$0: Segmented kaldi data directory located at ${data_dir}."
 fi

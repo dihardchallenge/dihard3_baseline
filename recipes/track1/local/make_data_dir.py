@@ -183,7 +183,7 @@ class Recording:
             recording_id = flac_path.stem
             lab_path = Path(sad_dir, recording_id + '.lab')
             rttm_path = None
-            if rttm_dir is not None:
+            if rttm_dir is not None and rttm_dir.exists():
                 rttm_path = Path(rttm_dir, recording_id + '.rttm')
             recordings.append(Recording(
                 recording_id, lab_path, flac_path, rttm_path))
@@ -317,6 +317,11 @@ def write_reco2num_spk(reco2num_spk_path, recordings):
             f.write(line)
 
 
+def warning(msg):
+    """Print WARNING to STDERR."""
+    print(f'WARNING: {msg}', file=sys.stderr)
+
+    
 def main():
     """Main."""
     parser = argparse.ArgumentParser(
@@ -345,6 +350,7 @@ def main():
         sys.exit(1)
     args = parser.parse_args()
 
+    has_rttm = args.rttm_dir is not None and args.rttm_dir.exists()
     args.data_dir.mkdir(parents=True, exist_ok=True)
     recordings = Recording.load_recordings(
         args.sad_dir, args.flac_dir, args.rttm_dir)
@@ -359,9 +365,10 @@ def main():
         Path(args.data_dir, 'segments'), recordings)
     write_utt2spk(
         Path(args.data_dir, 'utt2spk'), recordings)
-    write_reco2num_spk(
-        Path(args.data_dir, 'reco2num_spk'), recordings)
-    if args.rttm_dir is not None:
+    if has_rttm:
+        write_reco2num_spk(
+            Path(args.data_dir, 'reco2num_spk'), recordings)
+    if has_rttm:
         turns = list(itertools.chain.from_iterable(
             recording.turns for recording in recordings))
         write_rttm_file(
