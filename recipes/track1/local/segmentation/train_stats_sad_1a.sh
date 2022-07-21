@@ -44,8 +44,8 @@ relu_dim=256
 num_epochs=1
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-num_jobs_initial=4
-num_jobs_final=6
+num_jobs_initial=1
+num_jobs_final=1
 max_param_change=0.2  # Small max-param change for small network
 
 # If following is true, remove intermediate models, configs/, egs/, and other
@@ -161,7 +161,7 @@ if [ $stage -le 1 ]; then
 	--trainer.optimization.num-jobs-final=$num_jobs_final \
 	--trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
 	--trainer.optimization.final-effective-lrate=$final_effective_lrate \
-	--trainer.rnn.num-chunk-per-minibatch=128,64 \
+	--trainer.rnn.num-chunk-per-minibatch=64,32 \
 	--trainer.optimization.momentum=0.5 \
 	--trainer.deriv-truncate-margin=10 \
 	--trainer.max-param-change=$max_param_change \

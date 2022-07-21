@@ -51,7 +51,7 @@ rttm_dir=$2
 tmpdir=$(mktemp -d -t dh3-dscore-XXXXXXXX)
 
 # Score FULL test set.
-score.py \
+python3 dscore/score.py \
   --collar $collar --step $step \
   -u $release_dir/data/uem_scoring/full/all.uem \
   -r $release_dir/data/rttm/*.rttm \
@@ -61,7 +61,7 @@ score.py \
 
 
 # Score CORE test set.
-score.py \
+python3 dscore/score.py \
   -u $release_dir/data/uem_scoring/core/all.uem \
   -r $release_dir/data/rttm/*.rttm \
   -s $rttm_dir/*.rttm \

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Populate Kaldi data directory for diarization.
 
 The resulting data directory contains the following files:

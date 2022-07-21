@@ -24,7 +24,7 @@ nj=40
 cmd=run.pl
 
 # Python to use.
-PYTHON=python
+PYTHON=python3
 
 # Upper bound on number of speakers hypothesized.
 max_speakers=10

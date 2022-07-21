@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Writes to STDOUT a transformation matrix for converting a 3x1 vector of
 non-speech/speech/garbage posteriors to a 2x1 speech/non-speech pseudo-likelihood
 vector.

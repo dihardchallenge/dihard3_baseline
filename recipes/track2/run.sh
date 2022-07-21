@@ -30,9 +30,10 @@ eval_sad=false
 ################################################################################
 # Paths to DIHARD III releases
 ################################################################################
-DIHARD_DEV_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2020E12_Third_DIHARD_Challenge_Development_Data
-DIHARD_EVAL_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2021E02_Third_DIHARD_Challenge_Evaluation_Data_Complete
-
+#DIHARD_DEV_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2020E12_Third_DIHARD_Challenge_Development_Data
+#DIHARD_EVAL_DIR=/data/working/nryant/dihard3/delivery/builds/LDC2021E02_Third_DIHARD_Challenge_Evaluation_Data_Complete
+DIHARD_DEV_DIR=/media/ssd3/xuechen/voxsrc2022-track4/third_party/dihard3_baseline/recipes/track2/dihard_corpus/DIHARD3/LDC2020E12_Third_DIHARD_Challenge_Development_Data
+DIHARD_EVAL_DIR=/media/ssd3/xuechen/voxsrc2022-track4/third_party/dihard3_baseline/recipes/track2/dihard_corpus/DIHARD3/LDC2020E13_Third_DIHARD_Challenge_Evaluation_Data_SCRUBBED
 
 . ./utils/parse_options.sh
 . ./cmd.sh

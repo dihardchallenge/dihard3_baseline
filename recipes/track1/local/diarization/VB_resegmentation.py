@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """This script resegments an initial diarization using a variant of the VB-HMM
 method of Landini et al. (2020). Specifically, it has been modified to allow
 posterior of the zeroth order statistics following Singh et al. (2019).

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Prepare targets directory for SAD training from segments file.
 
 Given a Kaldi segments file ``segments`` describing the locations of all speech
